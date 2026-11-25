@@ -8,10 +8,10 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <title>Aftercredits</title>
+        <title>Popcorn Circle</title>
         <meta
           name="description"
-          content="Raghav’s private movie log. Rate films and keep notes on this device."
+          content="Popcorn Circle. Rate films, keep notes on this device, or share a group with friends."
         />
         <meta name="theme-color" content="#070709" />
         <ScrollViewStyleReset />

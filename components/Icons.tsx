@@ -33,6 +33,17 @@ export function ChevronLeftIcon({ color, size = 22 }: IconProps) {
   );
 }
 
+export function PeopleIcon({ color, size = 22 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="9" cy="8.2" r="2.3" stroke={color} strokeWidth={1.7} />
+      <Circle cx="16" cy="9" r="1.9" stroke={color} strokeWidth={1.7} />
+      <Path d="M4.6 18.4c.6-2.5 2.5-3.9 4.4-3.9s3.8 1.4 4.4 3.9" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+      <Path d="M13.4 14.8c1.1-.4 2.2-.5 3.3-.2 1.5.4 2.5 1.6 2.9 3.4" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function TrashIcon({ color, size = 20 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

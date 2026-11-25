@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Aftercredits",
-    "slug": "aftercredits",
+    "name": "Popcorn Circle",
+    "slug": "popcorn-circle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "aftercredits",
+    "scheme": "popcorncircle",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0c0c0f",
     "primaryColor": "#e4a853",
@@ -25,11 +25,11 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "Aftercredits",
-      "shortName": "Aftercredits",
+      "name": "Popcorn Circle",
+      "shortName": "Popcorn",
       "backgroundColor": "#0c0c0f",
       "themeColor": "#0c0c0f",
-      "description": "Raghav’s private movie log."
+      "description": "Popcorn Circle. Rate films on your phone, or with friends."
     },
     "plugins": [
       "expo-router",

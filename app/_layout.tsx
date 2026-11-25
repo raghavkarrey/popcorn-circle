@@ -12,6 +12,7 @@ import 'react-native-reanimated';
 
 import { FontReadyContext } from '@/components/AppText';
 import { colors } from '@/constants/theme';
+import { GroupProvider } from '@/context/GroupProvider';
 import { RatingsProvider } from '@/context/RatingsProvider';
 
 export { ErrorBoundary } from 'expo-router';
@@ -55,17 +56,19 @@ export default function RootLayout() {
     <FontReadyContext.Provider value={Boolean(loaded) && !error}>
       <ThemeProvider value={navigationTheme}>
         <RatingsProvider>
-          <StatusBar style="light" />
-          <View style={styles.shell}>
-            <View style={styles.frame}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.bg },
-                }}
-              />
+          <GroupProvider>
+            <StatusBar style="light" />
+            <View style={styles.shell}>
+              <View style={styles.frame}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.bg },
+                  }}
+                />
+              </View>
             </View>
-          </View>
+          </GroupProvider>
         </RatingsProvider>
       </ThemeProvider>
     </FontReadyContext.Provider>

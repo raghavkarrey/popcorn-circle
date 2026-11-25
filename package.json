@@ -1,5 +1,5 @@
 {
-  "name": "aftercredits",
+  "name": "popcorn-circle",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/jest": "30.0.0",
+    "@types/node": "^26.6.10",
     "@types/react": "~19.3.0",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.15",
@@ -40,13 +41,17 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest --watchman=false",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "circle": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/index.ts"
   },
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
       "**/__tests__/**/*.test.ts"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.ts$": "$1"
+    }
   },
   "private": true
 }

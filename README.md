@@ -1,8 +1,50 @@
-# Aftercredits
+# Popcorn Circle
 
-A private movie log for Raghav. Search a title, rate it from half a star to five, leave a short note, and keep the list on the device. There is no account and no server.
+Popcorn Circle is a movie log for Raghav, planned for popcorncircle.com. Search a title, rate it from half a star to five, leave a short note, and keep that list on the device. Friends can also start a group with a short join code and see each other’s ratings. There is no account.
 
-Search, rating, and the log work in Expo Go on iOS and Android, and in the browser.
+Search, rating, and the personal log work in Expo Go on iOS and Android, and in the browser. Solo use does not need the group server.
+
+## Try a shared group
+
+The group server is a small program in this repo. It does not need Supabase, Firebase, or any paid account. Ratings shared with a group live in `server/data/circles.json` on the computer running the server. Personal ratings still stay in AsyncStorage on each device.
+
+In one terminal:
+
+```bash
+npm run circle
+```
+
+That listens on port **43124**. In another terminal, start the app (`npm start` or `npm run web`).
+
+### Two browser tabs
+
+1. Open the web app in two tabs.
+2. In the first tab, open **Group**, type a name, and tap **Start a group**.
+3. Copy the 6-character code.
+4. In the second tab, open **Group**, type a different name, enter that code, and tap **Join group**.
+5. In the first tab, rate a film from **Search** and save it.
+6. Within a few seconds the second tab shows that rating and note on **Group**, and on the film itself under **In the group**.
+
+Each tab keeps its own name. On one computer, **My Ratings** is still the browser’s personal log, so those two tabs share it. The **Group** list is where each person’s stars and notes show up separately. Two phones each keep their own personal log.
+
+A film is shared only when you save it while you are in the group. Ratings you saved before joining stay on that phone. Leaving a group removes your shared ratings from the group and leaves **My Ratings** alone.
+
+The join code is the only lock. Anyone with the code can join and read the notes. It is meant for friends, not for private accounts.
+
+### On two phones
+
+1. Run `npm run circle` on the computer.
+2. Find the computer’s LAN address (for example `192.168.1.20`).
+3. In `.env`:
+
+```bash
+EXPO_PUBLIC_GROUP_API_URL=http://192.168.1.20:43124
+```
+
+4. Restart Expo so the app picks up the address. Phones cannot use `127.0.0.1`; that points at the phone itself.
+5. Both phones join the same code.
+
+The browser on the same computer can leave this unset. It defaults to `http://127.0.0.1:43124`.
 
 ## Run it on a phone
 
@@ -66,7 +108,8 @@ This product uses the TMDB API but is not endorsed or certified by TMDB. Poster 
 - Search by title and open a film for its poster, year, and overview.
 - Rate it in half-star steps and add an optional note of up to 280 characters.
 - Open **My Ratings**, sort by most recent or highest rated, then edit or delete.
-- Ratings persist in AsyncStorage on that device (`aftercredits.ratings.v1`).
+- Ratings persist in AsyncStorage on that device. The storage key is still `aftercredits.ratings.v1`, so a log saved under the old name is still there.
+- Open **Group** to start or join with a code, then see friends’ stars and notes. The personal log still works with no group.
 
 ## Tests
 
@@ -74,12 +117,13 @@ This product uses the TMDB API but is not endorsed or certified by TMDB. Poster 
 npm test
 ```
 
-The tests cover the rating rules, the on-device repository, shelf search, and the TMDB fallback. They do not need a key or a device.
+The tests cover the rating rules, the on-device repository, shelf search, the TMDB fallback, and group membership. They do not need a key or a device. The group tests start a temporary server on a random port.
 
 ## Project layout
 
-- `app/` — Search tab, My Ratings tab, and the movie screen (Expo Router)
-- `lib/ratings.ts` — validation, sorting, and the storage repository
+- `app/` — Search, My Ratings, Group, and the movie screen (Expo Router)
+- `lib/ratings.ts` — validation, sorting, and the on-device repository
+- `lib/groups.ts` — join codes, membership, and shared ratings
+- `server/` — the local group server (`npm run circle`)
 - `lib/sample-movies.ts` — the offline shelf
 - `lib/tmdb.ts` — optional live search
-- `context/RatingsProvider.tsx` — the log shared by both tabs

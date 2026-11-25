@@ -77,7 +77,7 @@ export default function SearchScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            <AppText variant="eyebrow">Aftercredits</AppText>
+            <AppText variant="eyebrow">Popcorn Circle</AppText>
             <AppText variant="display" style={styles.title}>
               What did you watch?
             </AppText>

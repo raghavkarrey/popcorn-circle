@@ -2,8 +2,9 @@ import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
 import { useFontsReady } from '@/components/AppText';
-import { SearchIcon, StarIcon } from '@/components/Icons';
+import { PeopleIcon, SearchIcon, StarIcon } from '@/components/Icons';
 import { colors, fonts } from '@/constants/theme';
+import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
 
 function tint(color: ColorValue): string {
@@ -13,6 +14,7 @@ function tint(color: ColorValue): string {
 export default function TabLayout() {
   const fontsReady = useFontsReady();
   const { ratings } = useRatings();
+  const { group } = useGroup();
 
   return (
     <Tabs
@@ -51,6 +53,20 @@ export default function TabLayout() {
             fontSize: 11,
           },
           tabBarIcon: ({ color, size }) => <StarIcon color={tint(color)} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="group"
+        options={{
+          title: 'Group',
+          tabBarHideOnKeyboard: true,
+          tabBarBadge: group && group.members.length > 0 ? group.members.length : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.amber,
+            color: colors.amberInk,
+            fontSize: 11,
+          },
+          tabBarIcon: ({ color, size }) => <PeopleIcon color={tint(color)} size={size} />,
         }}
       />
     </Tabs>

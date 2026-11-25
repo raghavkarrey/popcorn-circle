@@ -16,9 +16,11 @@ import { ChevronLeftIcon } from '@/components/Icons';
 import { Poster } from '@/components/Poster';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { StarPicker } from '@/components/Stars';
+import { StarPicker, Stars } from '@/components/Stars';
 import { colors, fonts } from '@/constants/theme';
+import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
+import { ratingsForMovie } from '@/lib/groups';
 import { resolveMovie } from '@/lib/movies';
 import { findRatingForMovie, formatStars, MAX_NOTE_LENGTH } from '@/lib/ratings';
 import { largerPoster } from '@/lib/tmdb';
@@ -28,8 +30,10 @@ export default function MovieScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? '';
   const { ratings, ready, rate, remove } = useRatings();
+  const { membership, group, publish, unpublish } = useGroup();
   const movie = useMemo(() => resolveMovie(id, ratings), [id, ratings]);
   const existing = movie ? findRatingForMovie(ratings, movie) : undefined;
+  const shared = movie && group ? ratingsForMovie(group, movie) : [];
 
   const [stars, setStars] = useState(0);
   const [note, setNote] = useState('');
@@ -58,7 +62,20 @@ export default function MovieScreen() {
     setSaving(true);
     setFormError(null);
     try {
-      await rate({ movie, stars, note });
+      const saved = await rate({ movie, stars, note });
+      if (membership) {
+        try {
+          await publish(saved);
+        } catch (error) {
+          setFormError(
+            error instanceof Error
+              ? `Saved on this phone, but the group didn't get it. ${error.message}`
+              : "Saved on this phone, but the group didn't get it.",
+          );
+          setSaving(false);
+          return;
+        }
+      }
       goBack();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not save this rating.');
@@ -71,6 +88,18 @@ export default function MovieScreen() {
     setConfirming(false);
     try {
       await remove(existing.movieId);
+      if (membership && movie) {
+        try {
+          await unpublish({ id: existing.movieId, title: movie.title, year: movie.year });
+        } catch (error) {
+          setFormError(
+            error instanceof Error
+              ? `Removed on this phone, but it's still in the group. ${error.message}`
+              : "Removed on this phone, but it's still in the group.",
+          );
+          return;
+        }
+      }
       goBack();
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not remove this rating.');
@@ -166,6 +195,12 @@ export default function MovieScreen() {
                 />
               </View>
 
+              {membership ? (
+                <AppText variant="meta" style={styles.shareHint}>
+                  Saving also shares this with group {membership.code}.
+                </AppText>
+              ) : null}
+
               {existing ? (
                 <Pressable
                   accessibilityRole="button"
@@ -179,6 +214,39 @@ export default function MovieScreen() {
                   </AppText>
                 </Pressable>
               ) : null}
+
+              <AppText variant="eyebrow" style={styles.section}>
+                In the group
+              </AppText>
+              {!membership ? (
+                <AppText variant="muted">
+                  This rating stays on this phone. Open Group when you want friends to see it.
+                </AppText>
+              ) : shared.length === 0 ? (
+                <AppText variant="muted">Nobody in {membership.code} has rated this yet.</AppText>
+              ) : (
+                <View testID="group-movie-ratings" style={styles.sharedList}>
+                  {shared.map((item) => {
+                    const mine = item.memberId === membership.memberId;
+                    return (
+                      <View key={`${item.memberId}-${item.movieId}`} style={styles.sharedCard} testID={`friend-rating-${item.memberId}`}>
+                        <View style={styles.sharedHead}>
+                          <AppText variant="title">{mine ? `${item.memberName} (you)` : item.memberName}</AppText>
+                          <AppText variant="meta" style={styles.sharedScore}>
+                            {formatStars(item.stars)}
+                          </AppText>
+                        </View>
+                        <Stars value={item.stars} size={14} />
+                        {item.note ? (
+                          <AppText variant="muted" style={styles.sharedNote}>
+                            {item.note}
+                          </AppText>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </>
           ) : null}
         </ScrollView>
@@ -186,7 +254,13 @@ export default function MovieScreen() {
       <ConfirmDialog
         visible={confirming}
         title="Remove this rating?"
-        body={movie ? `${movie.title} leaves the log, and the note goes with it.` : ''}
+        body={
+          movie
+            ? membership
+              ? `${movie.title} leaves this phone, and your copy in the group goes with it.`
+              : `${movie.title} leaves the log, and the note goes with it.`
+            : ''
+        }
         confirmLabel="Remove"
         onCancel={() => setConfirming(false)}
         onConfirm={() => void onRemove()}
@@ -268,6 +342,32 @@ const styles = StyleSheet.create({
   },
   save: {
     marginTop: 18,
+  },
+  shareHint: {
+    marginTop: 8,
+  },
+  sharedList: {
+    gap: 10,
+  },
+  sharedCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    padding: 12,
+    gap: 6,
+  },
+  sharedHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sharedScore: {
+    color: colors.amber,
+  },
+  sharedNote: {
+    marginTop: 2,
   },
   remove: {
     minHeight: 48,
