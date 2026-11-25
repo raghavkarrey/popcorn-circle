@@ -1,7 +1,12 @@
+# Free web service. Render's free plan has an ephemeral filesystem and
+# cannot attach a persistent disk, so this blueprint does not declare one.
+# Group data in GROUP_FILE is wiped when the service restarts, redeploys,
+# or spins down. Do not set PORT here: Render assigns it (default 10000).
 services:
   - type: web
     name: popcorn-circle
     runtime: docker
+    plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
@@ -13,7 +18,3 @@ services:
         value: "*"
       - key: ADMIN_TOKEN
         generateValue: true
-    disk:
-      name: circles
-      mountPath: /data
-      sizeGB: 1

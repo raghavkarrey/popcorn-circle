@@ -71,14 +71,20 @@ ADMIN_TOKEN=your-token npm run reports -- remove APLREV m_review_alex shelf-ince
 
 This environment cannot create a Render or Fly account. The app is one command from either host. After it is live, set `EXPO_PUBLIC_GROUP_API_URL` to the `https` URL and ship a new build. Do not leave the default pointed at localhost for the App Store build.
 
-Render:
+Render, free plan:
 
-1. Create a Render account and a new Blueprint from this repo. `render.yaml` is included.
-2. Confirm the disk named `circles` is mounted at `/data`.
-3. Set `ADMIN_TOKEN` if Render did not generate one. `CORS_ORIGIN` can stay `*`.
-4. Open `https://<your-service>.onrender.com/health` and expect `{"ok":true}`.
-5. Privacy policy: `https://<your-service>.onrender.com/privacy`.
-6. Put that origin in `EXPO_PUBLIC_GROUP_API_URL`.
+`render.yaml` is a free Docker web service. Render's free plan cannot attach a persistent disk, so the blueprint does not declare one. Group ratings are written to `GROUP_FILE` (`/data/circles.json`) on the container filesystem. That file is ephemeral: it is wiped when the service restarts, redeploys, or spins down after inactivity. Keeping groups across restarts would require a paid disk, and this blueprint does not create one.
+
+Create a Blueprint from this repo, or a Web Service by hand, with these settings:
+
+- Runtime: Docker
+- Dockerfile path: `./Dockerfile`
+- Instance type: Free (`plan: free`)
+- Port: leave it unset. The server listens on Render's `PORT` (default `10000`) and host `0.0.0.0`.
+- Health check path: `/health`
+- Environment variables: `HOST=0.0.0.0`, `GROUP_FILE=/data/circles.json`, `CORS_ORIGIN=*`, and `ADMIN_TOKEN` (the blueprint generates one). Do not put a TMDB key on this service. Search keys belong in the app build, not the group server.
+
+Then open `https://<your-service>.onrender.com/health` and expect `{"ok":true}`. The privacy policy is at `https://<your-service>.onrender.com/privacy`. Put that origin in `EXPO_PUBLIC_GROUP_API_URL` and ship a new app build.
 
 Fly.io:
 
