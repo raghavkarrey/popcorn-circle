@@ -3,6 +3,7 @@ import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  blockRemoteMember,
   createRemoteGroup,
   fetchRemoteGroup,
   groupApiBase,
@@ -11,6 +12,8 @@ import {
   leaveRemoteGroup,
   publishRemoteRating,
   removeRemoteRating,
+  reportRemoteRating,
+  unblockRemoteMember,
 } from '@/lib/group-api';
 import type { GroupMembership, GroupRecord } from '@/lib/groups';
 import { createGroupSessionRepository, emptyGroupSession, type GroupSession } from '@/lib/group-session';
@@ -41,11 +44,15 @@ type GroupContextValue = {
   setDisplayName: (name: string) => void;
   membership: GroupMembership | null;
   group: GroupRecord | null;
+  blockedMemberIds: string[];
   syncError: string | null;
   apiBase: string;
   createGroup: () => Promise<void>;
   joinGroup: (code: string) => Promise<void>;
   leaveGroup: () => Promise<void>;
+  blockMember: (memberId: string) => Promise<void>;
+  unblockMember: (memberId: string) => Promise<void>;
+  reportRating: (target: { memberId: string; movieId: string }) => Promise<void>;
   publish: (rating: Rating) => Promise<void>;
   unpublish: (movie: { id: string; title: string; year: string }) => Promise<void>;
   refresh: () => Promise<void>;
@@ -56,6 +63,7 @@ const GroupContext = createContext<GroupContextValue | null>(null);
 export function GroupProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<GroupSession>(emptyGroupSession);
   const [group, setGroup] = useState<GroupRecord | null>(null);
+  const [blockedMemberIds, setBlockedMemberIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const sessionRef = useRef(session);
@@ -71,13 +79,15 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     const membership = sessionRef.current.membership;
     if (!membership) {
       setGroup(null);
+      setBlockedMemberIds([]);
       setSyncError(null);
       return;
     }
     try {
-      const next = await fetchRemoteGroup(membership.code);
+      const next = await fetchRemoteGroup(membership.code, membership);
       if (sessionRef.current.membership?.code !== membership.code) return;
-      setGroup(next);
+      setGroup(next.group);
+      setBlockedMemberIds(next.blockedMemberIds);
       setSyncError(null);
     } catch (error) {
       if (sessionRef.current.membership?.code !== membership.code) return;
@@ -85,6 +95,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       if (error instanceof GroupApiError && message.includes("doesn't match")) {
         await persist({ ...sessionRef.current, membership: null });
         setGroup(null);
+        setBlockedMemberIds([]);
       }
       setSyncError(message);
     }
@@ -162,8 +173,33 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     await leaveRemoteGroup(membership);
     await persist({ ...sessionRef.current, membership: null });
     setGroup(null);
+    setBlockedMemberIds([]);
     setSyncError(null);
   }, [persist]);
+
+  const applyView = useCallback((view: { group: GroupRecord; blockedMemberIds: string[] }) => {
+    setGroup(view.group);
+    setBlockedMemberIds(view.blockedMemberIds);
+    setSyncError(null);
+  }, []);
+
+  const blockMember = useCallback(async (memberId: string) => {
+    const membership = sessionRef.current.membership;
+    if (!membership) return;
+    applyView(await blockRemoteMember(membership, memberId));
+  }, [applyView]);
+
+  const unblockMember = useCallback(async (memberId: string) => {
+    const membership = sessionRef.current.membership;
+    if (!membership) return;
+    applyView(await unblockRemoteMember(membership, memberId));
+  }, [applyView]);
+
+  const reportRating = useCallback(async (target: { memberId: string; movieId: string }) => {
+    const membership = sessionRef.current.membership;
+    if (!membership) return;
+    await reportRemoteRating(membership, target);
+  }, []);
 
   const publish = useCallback(async (rating: Rating) => {
     const membership = sessionRef.current.membership;
@@ -197,11 +233,15 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setDisplayName,
       membership: session.membership,
       group,
+      blockedMemberIds,
       syncError,
       apiBase: groupApiBase(),
       createGroup,
       joinGroup,
       leaveGroup,
+      blockMember,
+      unblockMember,
+      reportRating,
       publish,
       unpublish,
       refresh,
@@ -211,11 +251,15 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       session.displayName,
       session.membership,
       group,
+      blockedMemberIds,
       syncError,
       setDisplayName,
       createGroup,
       joinGroup,
       leaveGroup,
+      blockMember,
+      unblockMember,
+      reportRating,
       publish,
       unpublish,
       refresh,

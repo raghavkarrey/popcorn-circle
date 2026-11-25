@@ -6,17 +6,27 @@ import path from 'node:path';
 
 import {
   GroupError,
+  REVIEWER_CODE,
+  adminRemoveRating,
+  blockMember,
+  containsObjectionableLanguage,
   createGroup,
   emptyGroupDatabase,
+  ensureReviewGroup,
   groupFeed,
   joinGroup,
+  languageError,
   leaveGroup,
+  listReports,
   normalizeDisplayName,
   normalizeGroupCode,
   ratingsForMovie,
   readGroup,
   removeGroupRating,
+  reportRating,
+  unblockMember,
   upsertGroupRating,
+  viewGroup,
 } from '../lib/groups';
 import { createFileGroupStore, createMemoryGroupStore } from '../server/store';
 import { listenGroupServer } from '../server/http';
@@ -134,6 +144,95 @@ describe('group membership and ratings', () => {
   });
 });
 
+describe('moderation, reports, blocks, and deletion', () => {
+  function pair() {
+    const created = createGroup(emptyGroupDatabase(), { name: 'Raghav', now: 1 });
+    const joined = joinGroup(created.db, { code: created.result.membership.code, name: 'Priya', now: 2 });
+    const rated = upsertGroupRating(joined.db, {
+      ...created.result.membership,
+      movie: { id: 'shelf-inception', title: 'Inception', year: '2010', stars: 5, note: 'The hallway.', updatedAt: 3 },
+    });
+    return { created, joined, rated };
+  }
+
+  it('rejects profanity in a display name and a shared note, and allows ordinary words', () => {
+    expect(containsObjectionableLanguage('what the shit')).toBe(true);
+    expect(containsObjectionableLanguage('sh1t')).toBe(true);
+    expect(containsObjectionableLanguage('classic cinema')).toBe(false);
+    expect(languageError('oh shit', 'note')).toMatch(/isn't allowed/);
+    expect(() => createGroup(emptyGroupDatabase(), { name: 'shit' })).toThrow(GroupError);
+    const created = createGroup(emptyGroupDatabase(), { name: 'Raghav' });
+    expect(() =>
+      upsertGroupRating(created.db, {
+        ...created.result.membership,
+        movie: { id: 'shelf-coco', title: 'Coco', year: '2017', stars: 4, note: 'this is bullshit' },
+      }),
+    ).toThrow(/offensive language/);
+  });
+
+  it('records a report and lets an admin remove the note', () => {
+    const { created, joined, rated } = pair();
+    const reported = reportRating(rated.db, {
+      ...joined.result.membership,
+      targetMemberId: created.result.membership.memberId,
+      movieId: 'shelf-inception',
+      now: 9,
+    });
+    expect(listReports(reported.db)).toHaveLength(1);
+    expect(listReports(reported.db)[0]).toMatchObject({ status: 'open', title: 'Inception', noteExcerpt: 'The hallway.' });
+    const removed = adminRemoveRating(reported.db, {
+      code: created.result.membership.code,
+      memberId: created.result.membership.memberId,
+      movieId: 'shelf-inception',
+    });
+    expect(removed.removed).toBe(1);
+    expect(readGroup(removed.db, created.result.membership.code).ratings).toHaveLength(0);
+    expect(listReports(removed.db)[0]?.status).toBe('removed');
+  });
+
+  it('hides a blocked member’s ratings and keeps the block in the saved group', () => {
+    const { created, joined, rated } = pair();
+    const blocked = blockMember(rated.db, {
+      ...joined.result.membership,
+      blockedMemberId: created.result.membership.memberId,
+    });
+    expect(blocked.view.blockedMemberIds).toEqual([created.result.membership.memberId]);
+    expect(blocked.view.group.ratings).toHaveLength(0);
+    expect(blocked.view.group.members.map((member) => member.name)).toEqual(['Raghav', 'Priya']);
+    const visibleAgain = viewGroup(blocked.db, {
+      code: created.result.membership.code,
+      memberId: joined.result.membership.memberId,
+      token: joined.result.membership.token,
+    });
+    expect(visibleAgain.group.ratings).toHaveLength(0);
+    const cleared = unblockMember(blocked.db, {
+      ...joined.result.membership,
+      blockedMemberId: created.result.membership.memberId,
+    });
+    expect(cleared.view.blockedMemberIds).toEqual([]);
+    expect(cleared.view.group.ratings).toHaveLength(1);
+  });
+
+  it('deletes only the leaving member’s shared ratings, notes, and membership', () => {
+    const { created, joined, rated } = pair();
+    const both = upsertGroupRating(rated.db, {
+      ...joined.result.membership,
+      movie: { id: 'shelf-coco', title: 'Coco', year: '2017', stars: 4, note: 'The guitar.', updatedAt: 8 },
+    });
+    const left = leaveGroup(both.db, joined.result.membership);
+    const group = readGroup(left.db, created.result.membership.code);
+    expect(group.members.map((member) => member.name)).toEqual(['Raghav']);
+    expect(group.ratings.map((rating) => rating.note)).toEqual(['The hallway.']);
+  });
+
+  it('seeds one reviewer group and does not duplicate it', () => {
+    const seeded = ensureReviewGroup(emptyGroupDatabase());
+    expect(seeded.groups.map((group) => group.code)).toEqual([REVIEWER_CODE]);
+    expect(seeded.groups[0]?.ratings.length).toBeGreaterThanOrEqual(3);
+    expect(ensureReviewGroup(seeded).groups).toHaveLength(1);
+  });
+});
+
 describe('group server', () => {
   it('keeps a group on disk for the next process', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'aftercredits-'));
@@ -167,10 +266,13 @@ describe('group server', () => {
             response.on('data', (chunk: Buffer) => chunks.push(chunk));
             response.on('end', () => {
               const raw = Buffer.concat(chunks).toString('utf8');
-              resolve({
-                status: response.statusCode ?? 0,
-                json: raw ? (JSON.parse(raw) as Record<string, any>) : {},
-              });
+              let json: Record<string, any> = {};
+              try {
+                json = raw ? (JSON.parse(raw) as Record<string, any>) : {};
+              } catch {
+                json = { raw };
+              }
+              resolve({ status: response.statusCode ?? 0, json });
             });
           },
         );
@@ -214,6 +316,11 @@ describe('group server', () => {
 
       const health = await call('/health');
       expect(health.json).toEqual({ ok: true });
+      const admin = await call('/admin/reports');
+      expect(admin.status).toBe(503);
+      const privacy = await call('/privacy');
+      expect(privacy.status).toBe(200);
+      expect(String(privacy.json.raw)).toMatch(/display name/);
     } finally {
       await server.close();
     }

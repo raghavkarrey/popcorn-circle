@@ -1,4 +1,4 @@
-import type { GroupMembership, GroupMovieInput, GroupRecord, GroupSessionResult } from '@/lib/groups';
+import type { GroupMembership, GroupMovieInput, GroupRecord, GroupSessionResult, GroupView } from '@/lib/groups';
 
 export class GroupApiError extends Error {
   constructor(message: string) {
@@ -43,9 +43,11 @@ export function joinRemoteGroup(code: string, name: string): Promise<GroupSessio
   return request('/v1/groups/join', { code, name });
 }
 
-export async function fetchRemoteGroup(code: string): Promise<GroupRecord> {
-  const payload = await request<{ group: GroupRecord }>(`/v1/groups/${encodeURIComponent(code)}`);
-  return payload.group;
+export async function fetchRemoteGroup(code: string, membership: GroupMembership | null): Promise<GroupView> {
+  const query = membership
+    ? `?memberId=${encodeURIComponent(membership.memberId)}&token=${encodeURIComponent(membership.token)}`
+    : '';
+  return request<GroupView>(`/v1/groups/${encodeURIComponent(code)}${query}`);
 }
 
 export async function publishRemoteRating(membership: GroupMembership, movie: GroupMovieInput): Promise<GroupRecord> {
@@ -72,6 +74,34 @@ export async function removeRemoteRating(
     },
   );
   return payload.group;
+}
+
+export async function blockRemoteMember(membership: GroupMembership, blockedMemberId: string): Promise<GroupView> {
+  return request<GroupView>(`/v1/groups/${encodeURIComponent(membership.code)}/block`, {
+    memberId: membership.memberId,
+    token: membership.token,
+    blockedMemberId,
+  });
+}
+
+export async function unblockRemoteMember(membership: GroupMembership, blockedMemberId: string): Promise<GroupView> {
+  return request<GroupView>(`/v1/groups/${encodeURIComponent(membership.code)}/unblock`, {
+    memberId: membership.memberId,
+    token: membership.token,
+    blockedMemberId,
+  });
+}
+
+export async function reportRemoteRating(
+  membership: GroupMembership,
+  target: { memberId: string; movieId: string },
+): Promise<void> {
+  await request(`/v1/groups/${encodeURIComponent(membership.code)}/reports`, {
+    memberId: membership.memberId,
+    token: membership.token,
+    targetMemberId: target.memberId,
+    movieId: target.movieId,
+  });
 }
 
 export async function leaveRemoteGroup(membership: GroupMembership): Promise<GroupRecord> {

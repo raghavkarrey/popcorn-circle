@@ -17,7 +17,8 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { Stars } from '@/components/Stars';
 import { colors, fonts } from '@/constants/theme';
 import { useGroup } from '@/context/GroupProvider';
-import { GROUP_CODE_LENGTH, groupFeed, normalizeGroupCode, type GroupFeedItem } from '@/lib/groups';
+import { useRatings } from '@/context/RatingsProvider';
+import { GROUP_CODE_LENGTH, groupFeed, languageError, normalizeGroupCode, type GroupFeedItem } from '@/lib/groups';
 import { rememberMovie } from '@/lib/movie-memory';
 import { formatRatedOn, formatStars } from '@/lib/ratings';
 
@@ -33,13 +34,22 @@ export default function GroupScreen() {
     createGroup,
     joinGroup,
     leaveGroup,
+    blockMember,
+    unblockMember,
+    reportRating,
+    blockedMemberIds,
   } = useGroup();
+  const { clearAll } = useRatings();
   const [code, setCode] = useState('');
   const [nameFocused, setNameFocused] = useState(false);
   const [codeFocused, setCodeFocused] = useState(false);
   const [busy, setBusy] = useState<'create' | 'join' | 'leave' | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [alsoDeleteLocal, setAlsoDeleteLocal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<GroupFeedItem | null>(null);
+  const [blockTarget, setBlockTarget] = useState<GroupFeedItem | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const feed = group ? groupFeed(group) : [];
   const nameReady = displayName.trim().length > 0;
   const codeReady = normalizeGroupCode(code).length === GROUP_CODE_LENGTH;
@@ -48,6 +58,12 @@ export default function GroupScreen() {
     if (!nameReady || busy) return;
     setBusy('create');
     setFormError(null);
+    const nameProblem = languageError(displayName, 'name');
+    if (nameProblem) {
+      setFormError(nameProblem);
+      setBusy(null);
+      return;
+    }
     try {
       await createGroup();
     } catch (error) {
@@ -61,6 +77,12 @@ export default function GroupScreen() {
     if (!nameReady || !codeReady || busy) return;
     setBusy('join');
     setFormError(null);
+    const nameProblem = languageError(displayName, 'name');
+    if (nameProblem) {
+      setFormError(nameProblem);
+      setBusy(null);
+      return;
+    }
     try {
       await joinGroup(code);
     } catch (error) {
@@ -76,6 +98,8 @@ export default function GroupScreen() {
     setFormError(null);
     try {
       await leaveGroup();
+      if (alsoDeleteLocal) await clearAll();
+      setAlsoDeleteLocal(false);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not leave the group.');
     } finally {
@@ -177,6 +201,9 @@ export default function GroupScreen() {
           <AppText variant="meta" style={styles.footer}>
             Ratings you already saved stay on this phone. A film is shared only when you save it while you’re in the group.
           </AppText>
+          <Pressable accessibilityRole="link" onPress={() => router.push('/about')} style={styles.aboutLink}>
+            <AppText variant="meta" style={styles.actionLabel}>About and privacy</AppText>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -206,11 +233,22 @@ export default function GroupScreen() {
             <View style={styles.members}>
               {group.members.map((member) => {
                 const mine = member.id === membership.memberId;
+                const blocked = blockedMemberIds.includes(member.id);
                 return (
                   <View key={member.id} style={[styles.member, mine && styles.memberMine]}>
                     <AppText variant="meta" style={mine ? styles.memberMineLabel : undefined}>
-                      {mine ? `${member.name} · you` : member.name}
+                      {mine ? `${member.name} · you` : blocked ? `${member.name} · blocked` : member.name}
                     </AppText>
+                    {blocked ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Unblock ${member.name}`}
+                        testID={`unblock-${member.id}`}
+                        onPress={() => void unblockMember(member.id)}
+                      >
+                        <AppText variant="meta" style={styles.actionLabel}>Unblock</AppText>
+                      </Pressable>
+                    ) : null}
                   </View>
                 );
               })}
@@ -239,60 +277,131 @@ export default function GroupScreen() {
         renderItem={({ item }) => {
           const mine = item.memberId === membership.memberId;
           return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${item.memberName} rated ${item.title} ${formatStars(item.stars)}`}
-              testID={`group-rating-${item.memberId}-${item.movieId}`}
-              onPress={() => openRating(item)}
-              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-            >
-              <Poster uri={item.posterUrl} title={item.title} width={56} height={84} radius={8} />
-              <View style={styles.cardCopy}>
-                <AppText variant="title" numberOfLines={2}>
-                  {item.title}
-                </AppText>
-                <AppText variant="meta">
-                  {mine ? 'You' : item.memberName} · {item.year}
-                </AppText>
-                <View style={styles.starRow}>
-                  <Stars value={item.stars} size={13} />
-                  <AppText variant="meta" style={styles.score}>
-                    {formatStars(item.stars)}
+            <View style={styles.card} testID={`group-rating-${item.memberId}-${item.movieId}`}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.memberName} rated ${item.title} ${formatStars(item.stars)}`}
+                onPress={() => openRating(item)}
+                style={({ pressed }) => [styles.cardMain, pressed && styles.pressed]}
+              >
+                <Poster uri={item.posterUrl} title={item.title} width={56} height={84} radius={8} />
+                <View style={styles.cardCopy}>
+                  <AppText variant="title" numberOfLines={2}>
+                    {item.title}
                   </AppText>
-                  <AppText variant="meta" style={styles.when}>
-                    {formatRatedOn(item.updatedAt)}
+                  <AppText variant="meta">
+                    {mine ? 'You' : item.memberName} · {item.year}
                   </AppText>
+                  <View style={styles.starRow}>
+                    <Stars value={item.stars} size={13} />
+                    <AppText variant="meta" style={styles.score}>
+                      {formatStars(item.stars)}
+                    </AppText>
+                    <AppText variant="meta" style={styles.when}>
+                      {formatRatedOn(item.updatedAt)}
+                    </AppText>
+                  </View>
+                  {item.note ? (
+                    <AppText variant="muted" numberOfLines={3} style={styles.note}>
+                      {item.note}
+                    </AppText>
+                  ) : null}
                 </View>
-                {item.note ? (
-                  <AppText variant="muted" numberOfLines={3} style={styles.note}>
-                    {item.note}
-                  </AppText>
-                ) : null}
-              </View>
-            </Pressable>
+              </Pressable>
+              {mine ? null : (
+                <View style={styles.actions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Report ${item.memberName}'s note on ${item.title}`}
+                    testID={`report-${item.memberId}-${item.movieId}`}
+                    onPress={() => setReportTarget(item)}
+                  >
+                    <AppText variant="meta" style={styles.actionLabel}>Report</AppText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Block ${item.memberName}`}
+                    testID={`block-${item.memberId}`}
+                    onPress={() => setBlockTarget(item)}
+                  >
+                    <AppText variant="meta" style={styles.actionLabel}>Block</AppText>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           );
         }}
         ListFooterComponent={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Leave group"
-            testID="leave-group"
-            onPress={() => setConfirming(true)}
-            style={styles.leave}
-          >
-            <AppText variant="body" style={styles.leaveLabel}>
-              {busy === 'leave' ? 'Leaving…' : 'Leave group'}
-            </AppText>
-          </Pressable>
+          <View>
+            {notice ? <AppText variant="muted" testID="group-notice" style={styles.noticeText}>{notice}</AppText> : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ checked: alsoDeleteLocal }}
+              testID="also-delete-local"
+              onPress={() => setAlsoDeleteLocal((value) => !value)}
+              style={styles.checkRow}
+            >
+              <View style={[styles.check, alsoDeleteLocal && styles.checkOn]} />
+              <AppText variant="muted">Also delete My Ratings on this phone</AppText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Leave group and delete my data"
+              testID="leave-delete"
+              onPress={() => setConfirming(true)}
+              style={styles.leave}
+            >
+              <AppText variant="body" style={styles.leaveLabel}>
+                {busy === 'leave' ? 'Deleting…' : 'Leave group and delete my data'}
+              </AppText>
+            </Pressable>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/about')} style={styles.aboutLink}>
+              <AppText variant="meta" style={styles.actionLabel}>About and privacy</AppText>
+            </Pressable>
+          </View>
         }
       />
       <ConfirmDialog
         visible={confirming}
-        title="Leave this group?"
-        body="Your ratings stay on this phone. The group keeps everyone else's, and yours comes off the shared list."
-        confirmLabel="Leave"
+        title="Delete your group data?"
+        body={
+          alsoDeleteLocal
+            ? 'This removes your name, shared ratings, and notes from the server, and deletes My Ratings on this phone.'
+            : 'This removes your name, shared ratings, and notes from the server. My Ratings on this phone stays.'
+        }
+        confirmLabel="Delete my data"
         onCancel={() => setConfirming(false)}
         onConfirm={() => void onLeave()}
+      />
+      <ConfirmDialog
+        visible={reportTarget !== null}
+        title="Report this note?"
+        body={reportTarget ? `Report ${reportTarget.memberName}'s note on ${reportTarget.title}. A developer can review it and remove it.` : ''}
+        confirmLabel="Report"
+        onCancel={() => setReportTarget(null)}
+        onConfirm={() => {
+          const target = reportTarget;
+          setReportTarget(null);
+          if (!target) return;
+          void reportRating({ memberId: target.memberId, movieId: target.movieId })
+            .then(() => setNotice('Report sent. A developer can review it from the admin list.'))
+            .catch((error: unknown) => setFormError(error instanceof Error ? error.message : 'Could not send the report.'));
+        }}
+      />
+      <ConfirmDialog
+        visible={blockTarget !== null}
+        title={blockTarget ? `Block ${blockTarget.memberName}?` : 'Block'}
+        body="Their ratings and notes will be hidden on this device. You can unblock them from the member list. The block is saved with your membership."
+        confirmLabel="Block"
+        onCancel={() => setBlockTarget(null)}
+        onConfirm={() => {
+          const target = blockTarget;
+          setBlockTarget(null);
+          if (!target) return;
+          void blockMember(target.memberId).catch((error: unknown) =>
+            setFormError(error instanceof Error ? error.message : 'Could not block that person.'),
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -367,6 +476,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   member: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.line,
@@ -395,14 +507,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   card: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 12,
     marginBottom: 10,
     borderRadius: 16,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
+    paddingBottom: 8,
+  },
+  cardMain: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+    paddingBottom: 4,
   },
   pressed: {
     opacity: 0.86,
@@ -424,6 +540,41 @@ const styles = StyleSheet.create({
   },
   note: {
     marginTop: 8,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  actionLabel: {
+    color: colors.amber,
+  },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 18,
+    minHeight: 44,
+  },
+  check: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.textFaint,
+  },
+  checkOn: {
+    backgroundColor: colors.amber,
+    borderColor: colors.amber,
+  },
+  noticeText: {
+    marginTop: 8,
+  },
+  aboutLink: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   leave: {
     minHeight: 48,

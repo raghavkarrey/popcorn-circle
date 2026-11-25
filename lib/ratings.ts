@@ -215,5 +215,9 @@ export function createRatingsRepository(store: KeyValueStore, key = RATINGS_STOR
       await save(updated);
       return updated;
     },
+    async clear(): Promise<Rating[]> {
+      await save([]);
+      return [];
+    },
   };
 }

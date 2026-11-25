@@ -1,0 +1,28 @@
+app = "popcorn-circle"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 43124
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    path = "/health"
+    interval = "30s"
+    timeout = "3s"
+    grace_period = "10s"
+
+[mounts]
+  source = "circles"
+  destination = "/data"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "43124"
+  GROUP_FILE = "/data/circles.json"
+  CORS_ORIGIN = "*"

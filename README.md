@@ -46,6 +46,65 @@ EXPO_PUBLIC_GROUP_API_URL=http://192.168.1.20:43124
 
 The browser on the same computer can leave this unset. It defaults to `http://127.0.0.1:43124`.
 
+### App Review notes
+
+The group server creates a demo group the first time it starts. Apple reviewers can join it without making their own:
+
+- Join code: `APLREV`
+- Sample members already in the group: Alex, Sam, and Jordan, with notes on Inception, Spirited Away, and Parasite
+- Join with any display name. Rate another film to add a shared note, or use Report and Block on the samples.
+
+Personal ratings from before this rename are still stored under `aftercredits.ratings.v1`.
+
+### Reports
+
+Set `ADMIN_TOKEN` in the environment before starting the server. Then, from another terminal:
+
+```bash
+ADMIN_TOKEN=your-token npm run reports -- list
+ADMIN_TOKEN=your-token npm run reports -- remove APLREV m_review_alex shelf-inception
+```
+
+`list` prints open and closed reports. `remove` deletes that member’s shared rating for that movie and marks matching reports removed. Requests without the token are rejected.
+
+### Put the server online
+
+This environment cannot create a Render or Fly account. The app is one command from either host. After it is live, set `EXPO_PUBLIC_GROUP_API_URL` to the `https` URL and ship a new build. Do not leave the default pointed at localhost for the App Store build.
+
+Render:
+
+1. Create a Render account and a new Blueprint from this repo. `render.yaml` is included.
+2. Confirm the disk named `circles` is mounted at `/data`.
+3. Set `ADMIN_TOKEN` if Render did not generate one. `CORS_ORIGIN` can stay `*`.
+4. Open `https://<your-service>.onrender.com/health` and expect `{"ok":true}`.
+5. Privacy policy: `https://<your-service>.onrender.com/privacy`.
+6. Put that origin in `EXPO_PUBLIC_GROUP_API_URL`.
+
+Fly.io:
+
+```bash
+fly auth login
+fly apps create popcorn-circle
+fly volumes create circles --region iad --size 1
+fly secrets set ADMIN_TOKEN=your-token
+fly deploy
+```
+
+`fly.toml` mounts that volume at `/data` and checks `/health`.
+
+Docker locally:
+
+```bash
+docker build -t popcorn-circle .
+docker run --rm -p 43124:43124 -e ADMIN_TOKEN=dev-token -v popcorn-data:/data popcorn-circle
+```
+
+### Still to set before release
+
+- `EXPO_PUBLIC_SUPPORT_EMAIL`: the About screen shows `support@popcorncircle.com` and labels it a placeholder until this is a real inbox.
+- `EXPO_PUBLIC_TMDB_API_KEY`: optional. Without it, search uses the films bundled in the app. With it, search uses TMDB for titles, posters, and overviews. See the TMDB section below.
+- `EXPO_PUBLIC_GROUP_API_URL`: the deployed group server, after the steps above.
+
 ## Run it on a phone
 
 You need Node.js 20 or newer, and the [Expo Go](https://expo.dev/go) app from the App Store or Play Store. This project uses Expo SDK 58, so update Expo Go if it asks you to.

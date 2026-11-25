@@ -8,7 +8,9 @@ const host = process.env.HOST || '0.0.0.0';
 const file = process.env.GROUP_FILE || path.join(process.cwd(), 'server', 'data', 'circles.json');
 
 const store = createFileGroupStore(file);
+const seeded = await store.seed();
 const running = await listenGroupServer(store, port, host);
+if (seeded) console.log('Seeded the App Review group APLREV');
 
 console.log(`Group server listening on http://${host}:${running.port}`);
 console.log(`Browser preview should use http://127.0.0.1:${running.port}`);

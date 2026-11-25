@@ -16,6 +16,7 @@ type RatingsContextValue = {
   error: string | null;
   rate: (input: RateInput) => Promise<Rating>;
   remove: (movieId: string) => Promise<void>;
+  clearAll: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -59,9 +60,14 @@ export function RatingsProvider({ children }: { children: ReactNode }) {
     setRatings(updated);
   }, []);
 
+  const clearAll = useCallback(async () => {
+    const updated = await ratingsRepository.clear();
+    setRatings(updated);
+  }, []);
+
   const value = useMemo(
-    () => ({ ratings, ready, error, rate, remove, refresh }),
-    [ratings, ready, error, rate, remove, refresh],
+    () => ({ ratings, ready, error, rate, remove, clearAll, refresh }),
+    [ratings, ready, error, rate, remove, clearAll, refresh],
   );
 
   return <RatingsContext.Provider value={value}>{children}</RatingsContext.Provider>;

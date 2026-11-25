@@ -1,0 +1,6 @@
+node_modules
+.expo
+server/data
+.git
+*.md
+!privacy.md

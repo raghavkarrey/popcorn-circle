@@ -77,7 +77,12 @@ export default function SearchScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            <AppText variant="eyebrow">Popcorn Circle</AppText>
+            <View style={styles.brandRow}>
+              <AppText variant="eyebrow">Popcorn Circle</AppText>
+              <Pressable accessibilityRole="link" accessibilityLabel="About Popcorn Circle" onPress={() => router.push('/about')}>
+                <AppText variant="meta" style={styles.about}>About</AppText>
+              </Pressable>
+            </View>
             <AppText variant="display" style={styles.title}>
               What did you watch?
             </AppText>
@@ -168,6 +173,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 28,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  about: {
+    color: colors.amber,
   },
   title: {
     marginTop: 8,

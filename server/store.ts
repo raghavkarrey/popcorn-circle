@@ -2,25 +2,35 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  adminRemoveRating,
+  blockMember,
   createGroup,
   emptyGroupDatabase,
+  ensureReviewGroup,
   joinGroup,
   leaveGroup,
+  listReports,
   readGroup,
   removeGroupRating,
   renameMember,
+  reportRating,
+  unblockMember,
   upsertGroupRating,
+  viewGroup,
+  type ContentReport,
   type GroupDatabase,
   type GroupMembership,
   type GroupMovieInput,
   type GroupRecord,
   type GroupSessionResult,
+  type GroupView,
 } from '../lib/groups.ts';
 
 export type GroupStore = {
   create(name: string): Promise<GroupSessionResult>;
   join(code: string, name: string): Promise<GroupSessionResult>;
   read(code: string): Promise<GroupRecord>;
+  view(input: { code: string; memberId?: string; token?: string }): Promise<GroupView>;
   rename(input: { code: string; memberId: string; token: string; name: string }): Promise<GroupRecord>;
   rate(input: { code: string; memberId: string; token: string; movie: GroupMovieInput }): Promise<GroupRecord>;
   removeRating(input: {
@@ -32,10 +42,23 @@ export type GroupStore = {
     year?: string;
   }): Promise<GroupRecord>;
   leave(input: GroupMembership): Promise<GroupRecord>;
+  block(input: { code: string; memberId: string; token: string; blockedMemberId: string }): Promise<GroupView>;
+  unblock(input: { code: string; memberId: string; token: string; blockedMemberId: string }): Promise<GroupView>;
+  report(input: { code: string; memberId: string; token: string; targetMemberId: string; movieId: string }): Promise<ContentReport>;
+  reports(): Promise<ContentReport[]>;
+  adminRemove(input: { code: string; memberId: string; movieId: string }): Promise<number>;
+  seed(): Promise<boolean>;
 };
 
+function asDatabase(value: GroupDatabase | undefined): GroupDatabase {
+  return {
+    groups: value?.groups ?? [],
+    reports: value?.reports ?? [],
+  };
+}
+
 export function createMemoryGroupStore(initial?: GroupDatabase): GroupStore {
-  let db = initial ?? emptyGroupDatabase();
+  let db = asDatabase(initial ?? emptyGroupDatabase());
   let chain = Promise.resolve();
 
   function run<T>(fn: () => T): Promise<T> {
@@ -65,6 +88,9 @@ export function createMemoryGroupStore(initial?: GroupDatabase): GroupStore {
     read(code) {
       return run(() => readGroup(db, code));
     },
+    view(input) {
+      return run(() => viewGroup(db, input));
+    },
     rename(input) {
       return run(() => {
         const out = renameMember(db, input);
@@ -93,6 +119,45 @@ export function createMemoryGroupStore(initial?: GroupDatabase): GroupStore {
         return out.group;
       });
     },
+    block(input) {
+      return run(() => {
+        const out = blockMember(db, input);
+        db = out.db;
+        return out.view;
+      });
+    },
+    unblock(input) {
+      return run(() => {
+        const out = unblockMember(db, input);
+        db = out.db;
+        return out.view;
+      });
+    },
+    report(input) {
+      return run(() => {
+        const out = reportRating(db, input);
+        db = out.db;
+        return out.report;
+      });
+    },
+    reports() {
+      return run(() => listReports(db));
+    },
+    adminRemove(input) {
+      return run(() => {
+        const out = adminRemoveRating(db, input);
+        db = out.db;
+        return out.removed;
+      });
+    },
+    seed() {
+      return run(() => {
+        const next = ensureReviewGroup(db);
+        const changed = next !== db;
+        db = next;
+        return changed;
+      });
+    },
   };
 }
 
@@ -104,7 +169,7 @@ export function createFileGroupStore(filePath: string): GroupStore {
       const raw = await readFile(filePath, 'utf8');
       const parsed = JSON.parse(raw) as GroupDatabase;
       if (!parsed || !Array.isArray(parsed.groups)) return emptyGroupDatabase();
-      return parsed;
+      return asDatabase(parsed);
     } catch (error) {
       const missing = error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT';
       if (!missing && error instanceof SyntaxError) {
@@ -151,6 +216,9 @@ export function createFileGroupStore(filePath: string): GroupStore {
     read(code) {
       return run((db) => ({ db, value: readGroup(db, code), write: false }));
     },
+    view(input) {
+      return run((db) => ({ db, value: viewGroup(db, input), write: false }));
+    },
     rename(input) {
       return run((db) => {
         const out = renameMember(db, input);
@@ -173,6 +241,39 @@ export function createFileGroupStore(filePath: string): GroupStore {
       return run((db) => {
         const out = leaveGroup(db, input);
         return { db: out.db, value: out.group };
+      });
+    },
+    block(input) {
+      return run((db) => {
+        const out = blockMember(db, input);
+        return { db: out.db, value: out.view };
+      });
+    },
+    unblock(input) {
+      return run((db) => {
+        const out = unblockMember(db, input);
+        return { db: out.db, value: out.view };
+      });
+    },
+    report(input) {
+      return run((db) => {
+        const out = reportRating(db, input);
+        return { db: out.db, value: out.report };
+      });
+    },
+    reports() {
+      return run((db) => ({ db, value: listReports(db), write: false }));
+    },
+    adminRemove(input) {
+      return run((db) => {
+        const out = adminRemoveRating(db, input);
+        return { db: out.db, value: out.removed };
+      });
+    },
+    seed() {
+      return run((db) => {
+        const next = ensureReviewGroup(db);
+        return { db: next, value: next !== db, write: next !== db };
       });
     },
   };

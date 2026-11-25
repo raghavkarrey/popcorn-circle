@@ -1,18 +1,24 @@
+import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import path from 'node:path';
 
 import { GroupError } from '../lib/groups.ts';
 import type { GroupStore } from './store.ts';
 
 const MAX_BODY = 100_000;
 
-function send(response: ServerResponse, status: number, body: unknown) {
-  const payload = JSON.stringify(body);
+function corsOrigin(): string {
+  return process.env.CORS_ORIGIN?.trim() || '*';
+}
+
+function send(response: ServerResponse, status: number, body: unknown, contentType = 'application/json; charset=utf-8') {
+  const payload = typeof body === 'string' ? body : JSON.stringify(body);
   response.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Type': contentType,
     'Content-Length': Buffer.byteLength(payload),
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin(),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Cache-Control': 'no-store',
   });
   response.end(payload);
@@ -72,6 +78,40 @@ function movieFrom(body: Record<string, unknown>) {
   };
 }
 
+function assertAdmin(request: IncomingMessage) {
+  const configured = process.env.ADMIN_TOKEN?.trim() ?? '';
+  if (!configured) throw new GroupError('Set ADMIN_TOKEN before reviewing reports.', 503);
+  const header = request.headers.authorization ?? '';
+  if (header !== `Bearer ${configured}`) throw new GroupError('Admin token required.', 401);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+async function privacyDocument(): Promise<string> {
+  let markdown = 'Privacy policy unavailable.';
+  try {
+    markdown = await readFile(path.join(process.cwd(), 'privacy.md'), 'utf8');
+  } catch {
+    markdown = 'Privacy policy file was not found next to the server.';
+  }
+  const body = markdown
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('# ')) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
+      if (line.startsWith('## ')) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+      if (!line.trim()) return '';
+      const safe = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return `<p>${safe}</p>`;
+    })
+    .join('\n');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Popcorn Circle privacy</title><style>body{font-family:Georgia,serif;max-width:40rem;margin:2rem auto;padding:0 1.25rem;line-height:1.55;background:#0c0c0f;color:#f4f1ea}h1,h2{font-family:sans-serif;line-height:1.2}a{color:#e4a853}</style></head><body>${body}</body></html>`;
+}
+
 async function route(store: GroupStore, request: IncomingMessage, response: ServerResponse) {
   if (request.method === 'OPTIONS') {
     send(response, 204, {});
@@ -83,6 +123,31 @@ async function route(store: GroupStore, request: IncomingMessage, response: Serv
 
   if (request.method === 'GET' && url.pathname === '/health') {
     send(response, 200, { ok: true });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/privacy') {
+    send(response, 200, await privacyDocument(), 'text/html; charset=utf-8');
+    return;
+  }
+
+  if (parts[0] === 'admin') {
+    assertAdmin(request);
+    if (request.method === 'GET' && parts[1] === 'reports') {
+      send(response, 200, { reports: await store.reports() });
+      return;
+    }
+    if (request.method === 'POST' && parts[1] === 'remove') {
+      const body = await readBody(request);
+      const removed = await store.adminRemove({
+        code: text(body.code),
+        memberId: text(body.memberId),
+        movieId: text(body.movieId),
+      });
+      send(response, 200, { removed });
+      return;
+    }
+    send(response, 404, { error: 'Not found.' });
     return;
   }
 
@@ -112,7 +177,12 @@ async function route(store: GroupStore, request: IncomingMessage, response: Serv
   }
 
   if (request.method === 'GET' && parts.length === 3) {
-    send(response, 200, { group: await store.read(code) });
+    const view = await store.view({
+      code,
+      memberId: url.searchParams.get('memberId') ?? '',
+      token: url.searchParams.get('token') ?? '',
+    });
+    send(response, 200, view);
     return;
   }
 
@@ -162,6 +232,32 @@ async function route(store: GroupStore, request: IncomingMessage, response: Serv
       token: text(body.token),
     });
     send(response, 200, { group });
+    return;
+  }
+
+  if (request.method === 'POST' && parts.length === 4 && (parts[3] === 'block' || parts[3] === 'unblock')) {
+    const body = await readBody(request);
+    const action = parts[3] === 'block' ? store.block.bind(store) : store.unblock.bind(store);
+    const view = await action({
+      code,
+      memberId: text(body.memberId),
+      token: text(body.token),
+      blockedMemberId: text(body.blockedMemberId),
+    });
+    send(response, 200, view);
+    return;
+  }
+
+  if (request.method === 'POST' && parts.length === 4 && parts[3] === 'reports') {
+    const body = await readBody(request);
+    const report = await store.report({
+      code,
+      memberId: text(body.memberId),
+      token: text(body.token),
+      targetMemberId: text(body.targetMemberId),
+      movieId: text(body.movieId),
+    });
+    send(response, 201, { report });
     return;
   }
 
