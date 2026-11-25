@@ -16,8 +16,10 @@ type TmdbMovie = {
   poster_path?: string | null;
 };
 
-export function readTmdbApiKey(env: Record<string, string | undefined> = process.env): string | null {
-  const value = env[TMDB_KEY_NAME];
+export function readTmdbApiKey(env?: Record<string, string | undefined>): string | null {
+  // A direct property read is required so Expo can inline EXPO_PUBLIC_TMDB_API_KEY.
+  // Callers that pass an object, including tests, keep the dynamic lookup.
+  const value = env === undefined ? process.env.EXPO_PUBLIC_TMDB_API_KEY : env[TMDB_KEY_NAME];
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed ? trimmed : null;
 }
