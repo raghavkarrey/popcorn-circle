@@ -3,6 +3,7 @@ WORKDIR /app
 COPY server ./server
 COPY lib/groups.ts ./lib/groups.ts
 COPY privacy.md ./privacy.md
+COPY assets/images/tmdb-logo.svg ./assets/images/tmdb-logo.svg
 ENV HOST=0.0.0.0
 ENV PORT=43124
 ENV GROUP_FILE=/data/circles.json

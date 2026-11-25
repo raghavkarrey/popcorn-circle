@@ -214,7 +214,7 @@ export default function GroupScreen() {
       <FlatList
         data={feed}
         keyExtractor={(item) => `${item.memberId}-${item.movieId}`}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 48 }]}
         ListHeaderComponent={
           <View>
             <AppText variant="eyebrow">Your group</AppText>

@@ -1,9 +1,19 @@
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { readFile as readFileAsync } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import path from 'node:path';
 
 import { GroupError } from '../lib/groups.ts';
+import { landingHtml } from './landing.ts';
 import type { GroupStore } from './store.ts';
+
+function tmdbLogo(): string {
+  try {
+    return readFileSync(path.join(process.cwd(), 'assets/images/tmdb-logo.svg'), 'utf8');
+  } catch {
+    return '';
+  }
+}
 
 const MAX_BODY = 100_000;
 
@@ -95,7 +105,7 @@ function escapeHtml(value: string): string {
 async function privacyDocument(): Promise<string> {
   let markdown = 'Privacy policy unavailable.';
   try {
-    markdown = await readFile(path.join(process.cwd(), 'privacy.md'), 'utf8');
+    markdown = await readFileAsync(path.join(process.cwd(), 'privacy.md'), 'utf8');
   } catch {
     markdown = 'Privacy policy file was not found next to the server.';
   }
@@ -120,6 +130,11 @@ async function route(store: GroupStore, request: IncomingMessage, response: Serv
 
   const url = new URL(request.url ?? '/', 'http://127.0.0.1');
   const parts = url.pathname.split('/').filter(Boolean);
+
+  if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '')) {
+    send(response, 200, landingHtml(tmdbLogo()), 'text/html; charset=utf-8');
+    return;
+  }
 
   if (request.method === 'GET' && url.pathname === '/health') {
     send(response, 200, { ok: true });

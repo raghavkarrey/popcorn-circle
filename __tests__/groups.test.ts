@@ -259,7 +259,10 @@ describe('group server', () => {
           base + pathname,
           {
             method: body === undefined ? 'GET' : 'POST',
-            headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+            headers: {
+              Connection: 'close',
+              ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+            },
           },
           (response) => {
             const chunks: Buffer[] = [];
@@ -321,6 +324,16 @@ describe('group server', () => {
       const privacy = await call('/privacy');
       expect(privacy.status).toBe(200);
       expect(String(privacy.json.raw)).toMatch(/display name/);
+      const home = await call('/');
+      expect(home.status).toBe(200);
+      const homeHtml = String(home.json.raw);
+      expect(homeHtml).toContain('Popcorn Circle');
+      expect(homeHtml).toContain(
+        'This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.',
+      );
+      expect(homeHtml).toContain('href="/privacy"');
+      expect(homeHtml).toContain('support@popcorncircle.com');
+      expect(homeHtml).toContain('small circle of friends');
     } finally {
       await server.close();
     }

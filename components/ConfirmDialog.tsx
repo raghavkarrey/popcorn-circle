@@ -14,10 +14,11 @@ type Props = {
 };
 
 export function ConfirmDialog({ visible, title, body, confirmLabel, onConfirm, onCancel }: Props) {
+  if (!visible) return null;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.backdrop}>
-        <Pressable accessibilityLabel="Dismiss" style={StyleSheet.absoluteFill} onPress={onCancel} />
+        <Pressable accessibilityLabel="Dismiss" style={styles.dismiss} onPress={onCancel} />
         <View style={styles.card}>
           <AppText variant="title">{title}</AppText>
           <AppText variant="muted" style={styles.body}>
@@ -40,14 +41,24 @@ export function ConfirmDialog({ visible, title, body, confirmLabel, onConfirm, o
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
+  dismiss: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 0,
+  },
   card: {
     width: '100%',
     maxWidth: 380,
+    zIndex: 2,
+    position: 'relative',
     backgroundColor: colors.surface,
     borderRadius: 18,
     borderWidth: 1,
