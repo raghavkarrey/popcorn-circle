@@ -33,8 +33,8 @@ In the group, tap **Leave group and delete my data**. That removes your membersh
 
 To delete ratings that never left the phone, open **About** and tap **Delete My Ratings on this phone**.
 
-You can also email the support address shown on the About screen and ask for shared data to be removed. Until a real support inbox is set, that address is a placeholder.
+You can also email [popcorncircleapp@gmail.com](mailto:popcorncircleapp@gmail.com) and ask for shared data to be removed.
 
 ## Contact
 
-The support email is configured in the app as `EXPO_PUBLIC_SUPPORT_EMAIL`. The placeholder is support@popcorncircle.com.
+Email [popcorncircleapp@gmail.com](mailto:popcorncircleapp@gmail.com). That address is the default for `EXPO_PUBLIC_SUPPORT_EMAIL`.

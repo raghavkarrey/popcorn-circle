@@ -99,9 +99,12 @@ docker build -t popcorn-circle .
 docker run --rm -p 43124:43124 -e ADMIN_TOKEN=dev-token -v popcorn-data:/data popcorn-circle
 ```
 
+### Support
+
+The support address is popcorncircleapp@gmail.com. About, the public landing page, and the privacy policy link to that inbox. `EXPO_PUBLIC_SUPPORT_EMAIL` defaults to it. Set the variable only if support should go somewhere else.
+
 ### Still to set before release
 
-- `EXPO_PUBLIC_SUPPORT_EMAIL`: the About screen shows `support@popcorncircle.com` and labels it a placeholder until this is a real inbox.
 - `EXPO_PUBLIC_TMDB_API_KEY`: optional. Without it, search uses the films bundled in the app. With it, search uses TMDB for titles, posters, and overviews. See the TMDB section below.
 - `EXPO_PUBLIC_GROUP_API_URL`: the deployed group server, after the steps above.
 

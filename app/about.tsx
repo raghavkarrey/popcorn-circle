@@ -19,7 +19,8 @@ const TMDB_NOTICE =
 export default function AboutScreen() {
   const { clearAll, ratings } = useRatings();
   const { apiBase } = useGroup();
-  const contact = supportContact();
+  const email = supportContact();
+  const mailto = `mailto:${email}`;
   const [confirming, setConfirming] = useState(false);
   const privacyUrl = `${groupApiBase()}/privacy`;
 
@@ -37,14 +38,16 @@ export default function AboutScreen() {
         </AppText>
 
         <AppText variant="eyebrow" style={styles.section}>Support</AppText>
-        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`mailto:${contact.email}`)}>
-          <AppText variant="body" style={styles.link} testID="support-email">{contact.email}</AppText>
-        </Pressable>
-        {contact.placeholder ? (
-          <AppText variant="meta" style={styles.todo}>
-            Placeholder. Set EXPO_PUBLIC_SUPPORT_EMAIL before release. This inbox is not monitored yet.
-          </AppText>
-        ) : null}
+        <AppText
+          variant="body"
+          accessibilityRole="link"
+          href={mailto}
+          onPress={() => void Linking.openURL(mailto)}
+          style={styles.link}
+          testID="support-email"
+        >
+          {email}
+        </AppText>
 
         <AppText variant="eyebrow" style={styles.section}>Privacy</AppText>
         <Pressable accessibilityRole="link" testID="privacy-link" onPress={() => void Linking.openURL(privacyUrl)}>
@@ -97,7 +100,6 @@ const styles = StyleSheet.create({
   body: { marginTop: 10 },
   section: { marginTop: 28, marginBottom: 8 },
   link: { color: colors.amber },
-  todo: { marginTop: 6 },
   delete: { minHeight: 48, justifyContent: 'center' },
   deleteLabel: { color: colors.danger },
   tmdb: { marginTop: 36, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.line, gap: 10 },

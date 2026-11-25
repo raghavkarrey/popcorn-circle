@@ -63,13 +63,15 @@ const variantFont: Record<Variant, string> = {
 
 type Props = TextProps & {
   variant?: Variant;
+  href?: string;
 };
 
-export function AppText({ variant = 'body', style, ...rest }: Props) {
+export function AppText({ variant = 'body', style, href, ...rest }: Props) {
   const fontsReady = useFontsReady();
   return (
     <Text
       {...rest}
+      {...(href ? ({ href } as TextProps) : null)}
       style={[variantStyle[variant], { fontFamily: fontsReady ? variantFont[variant] : undefined }, style]}
     />
   );

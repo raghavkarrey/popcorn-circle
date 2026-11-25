@@ -1,12 +1,9 @@
-const SUPPORT_KEY = 'EXPO_PUBLIC_SUPPORT_EMAIL';
-export const SUPPORT_EMAIL_PLACEHOLDER = 'support@popcorncircle.com';
+export const SUPPORT_EMAIL = 'popcorncircleapp@gmail.com';
 
-export function supportContact(env: Record<string, string | undefined> = process.env): {
-  email: string;
-  placeholder: boolean;
-} {
-  const value = env[SUPPORT_KEY];
+export function supportContact(env?: Record<string, string | undefined>): string {
+  // A direct property read lets Expo inline EXPO_PUBLIC_SUPPORT_EMAIL.
+  // Callers that pass an object, including tests, keep the dynamic lookup.
+  const value = env === undefined ? process.env.EXPO_PUBLIC_SUPPORT_EMAIL : env.EXPO_PUBLIC_SUPPORT_EMAIL;
   const trimmed = typeof value === 'string' ? value.trim() : '';
-  if (!trimmed) return { email: SUPPORT_EMAIL_PLACEHOLDER, placeholder: true };
-  return { email: trimmed, placeholder: false };
+  return trimmed || SUPPORT_EMAIL;
 }

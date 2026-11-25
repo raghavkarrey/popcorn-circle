@@ -99,7 +99,17 @@ function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderInline(line: string): string {
+  const withBold = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return withBold.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (match, label: string, href: string) => {
+    const decoded = href.replace(/&amp;/g, '&');
+    if (!/^(https?:\/\/|mailto:)/i.test(decoded)) return match;
+    return `<a href="${escapeHtml(decoded)}">${label}</a>`;
+  });
 }
 
 async function privacyDocument(): Promise<string> {
@@ -115,7 +125,7 @@ async function privacyDocument(): Promise<string> {
       if (line.startsWith('# ')) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
       if (line.startsWith('## ')) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
       if (!line.trim()) return '';
-      const safe = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      const safe = renderInline(line);
       return `<p>${safe}</p>`;
     })
     .join('\n');

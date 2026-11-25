@@ -332,7 +332,9 @@ describe('group server', () => {
         'This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.',
       );
       expect(homeHtml).toContain('href="/privacy"');
-      expect(homeHtml).toContain('support@popcorncircle.com');
+      expect(homeHtml).toContain('href="mailto:popcorncircleapp@gmail.com"');
+      expect(homeHtml).not.toContain('placeholder');
+      expect(String(privacy.json.raw)).toContain('href="mailto:popcorncircleapp@gmail.com"');
       expect(homeHtml).toContain('small circle of friends');
     } finally {
       await server.close();

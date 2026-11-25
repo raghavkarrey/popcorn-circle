@@ -1,7 +1,10 @@
+import { supportContact } from '../lib/support.ts';
+
 const TMDB_NOTICE =
   'This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.';
 
 export function landingHtml(logoSvg: string): string {
+  const email = supportContact();
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -70,12 +73,6 @@ export function landingHtml(logoSvg: string): string {
       font-size: 13px;
       line-height: 1.45;
     }
-    .placeholder {
-      margin: 8px 0 0;
-      color: #6f6a62;
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
-      font-size: 12px;
-    }
   </style>
 </head>
 <body>
@@ -85,9 +82,8 @@ export function landingHtml(logoSvg: string): string {
     <p class="lead">Rate movies, and share ratings and notes with a small circle of friends. No account. A short code is enough.</p>
     <div class="links">
       <a href="/privacy">Privacy policy</a>
-      <a href="mailto:support@popcorncircle.com">support@popcorncircle.com</a>
+      <a href="mailto:${email}">${email}</a>
     </div>
-    <p class="placeholder">Support address is a placeholder until a real inbox is set.</p>
     <div class="tmdb">
       ${logoSvg}
       <p class="notice">${TMDB_NOTICE}</p>
