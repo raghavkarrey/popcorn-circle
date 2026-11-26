@@ -2,6 +2,9 @@
 
 # dependencies
 node_modules/
+# Expo's web export copies font and icon files under this path.
+!web/assets/node_modules/
+!web/assets/node_modules/**
 
 # Expo
 .expo/

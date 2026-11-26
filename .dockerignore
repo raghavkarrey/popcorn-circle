@@ -1,4 +1,6 @@
 node_modules
+!web/assets/node_modules
+!web/assets/node_modules/**
 .expo
 server/data
 .git
