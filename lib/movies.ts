@@ -2,11 +2,12 @@ import { recallMovie } from '@/lib/movie-memory';
 import { movieFromRating } from '@/lib/ratings';
 import { findShelfMovie, SAMPLE_MOVIES } from '@/lib/sample-movies';
 import { searchShelf } from '@/lib/search';
-import { readTmdbApiKey, searchTmdb, TMDB_FALLBACK_NOTICE } from '@/lib/tmdb';
+import { readTmdbApiKey, searchTmdb, TMDB_FALLBACK_NOTICE, usesTmdbProxy } from '@/lib/tmdb';
 import type { Movie, Rating, SearchResult } from '@/lib/types';
 
 type SearchOptions = {
   key?: string | null;
+  proxy?: boolean;
   fetchImpl?: typeof fetch;
   shelf?: Movie[];
 };
@@ -23,13 +24,14 @@ export async function searchMovies(query: string, options: SearchOptions = {}): 
   const shelf = options.shelf ?? SAMPLE_MOVIES;
   const trimmed = query.trim();
   const key = options.key === undefined ? readTmdbApiKey() : options.key;
+  const proxy = options.proxy === undefined ? usesTmdbProxy() : options.proxy;
 
-  if (!trimmed || !key) {
+  if (!trimmed || (!key && !proxy)) {
     return previewShelf(query, shelf);
   }
 
   try {
-    const movies = await searchTmdb(trimmed, key, options.fetchImpl);
+    const movies = await searchTmdb(trimmed, key ?? '', options.fetchImpl, { proxy });
     return { movies, source: 'tmdb', notice: null };
   } catch {
     return {

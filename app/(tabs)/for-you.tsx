@@ -19,7 +19,7 @@ import {
   suggestionReason,
   type PersonalRecommendations,
 } from '@/lib/recommendations';
-import { readTmdbApiKey } from '@/lib/tmdb';
+import { readTmdbApiKey, usesTmdbProxy } from '@/lib/tmdb';
 import type { Movie } from '@/lib/types';
 
 export default function ForYouScreen() {
@@ -44,7 +44,7 @@ export default function ForYouScreen() {
 
     let cancelled = false;
     setLoading(true);
-    void loadPersonalRecommendations({ ratings, key: readTmdbApiKey() }).then((result) => {
+    void loadPersonalRecommendations({ ratings, key: readTmdbApiKey(), proxy: usesTmdbProxy() }).then((result) => {
       if (cancelled) return;
       setPersonal(result);
       setLoading(false);

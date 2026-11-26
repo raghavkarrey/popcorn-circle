@@ -5,7 +5,9 @@ import path from 'node:path';
 
 import { GroupError } from '../lib/groups.ts';
 import { landingHtml } from './landing.ts';
+import { resolveAppRequest, serveAppFile } from './static-app.ts';
 import type { GroupStore } from './store.ts';
+import { handleTmdbProxy } from './tmdb-proxy.ts';
 
 function tmdbLogo(): string {
   try {
@@ -154,6 +156,19 @@ async function route(store: GroupStore, request: IncomingMessage, response: Serv
   if (request.method === 'GET' && url.pathname === '/privacy') {
     send(response, 200, await privacyDocument(), 'text/html; charset=utf-8');
     return;
+  }
+
+  if (url.pathname.startsWith('/api/tmdb')) {
+    await handleTmdbProxy(request, response, url.pathname, url.searchParams);
+    return;
+  }
+
+  if (request.method === 'GET' && (url.pathname === '/app' || url.pathname.startsWith('/app/'))) {
+    const resolved = resolveAppRequest(url.pathname);
+    if (resolved) {
+      serveAppFile(response, resolved.file);
+      return;
+    }
   }
 
   if (parts[0] === 'admin') {

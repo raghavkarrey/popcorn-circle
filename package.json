@@ -43,6 +43,7 @@
     "test": "jest --watchman=false",
     "typecheck": "tsc --noEmit",
     "circle": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/index.ts",
+    "export:web": "node scripts/export-web.mjs",
     "reports": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/admin-cli.ts"
   },
   "jest": {

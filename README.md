@@ -82,9 +82,11 @@ Create a Blueprint from this repo, or a Web Service by hand, with these settings
 - Instance type: Free (`plan: free`)
 - Port: leave it unset. The server listens on Render's `PORT` (default `10000`) and host `0.0.0.0`.
 - Health check path: `/health`
-- Environment variables: `HOST=0.0.0.0`, `GROUP_FILE=/data/circles.json`, `CORS_ORIGIN=*`, and `ADMIN_TOKEN` (the blueprint generates one). Do not put a TMDB key on this service. Search keys belong in the app build, not the group server.
+- Environment variables: `HOST=0.0.0.0`, `GROUP_FILE=/data/circles.json`, `CORS_ORIGIN=*`, `ADMIN_TOKEN` (the blueprint generates one), and `TMDB_API_KEY` (set in the Render dashboard; the blueprint does not store it). Leave `TMDB_API_KEY` empty to keep the on-device shelf.
 
-Then open `https://<your-service>.onrender.com/health` and expect `{"ok":true}`. The privacy policy is at `https://<your-service>.onrender.com/privacy`. Put that origin in `EXPO_PUBLIC_GROUP_API_URL` and ship a new app build.
+The public site is the landing page at `/`, with **Open the app** leading to `/app`. That build calls this same origin for groups and `/api/tmdb` for search, so the catalog key stays on the server. Native builds still read `EXPO_PUBLIC_GROUP_API_URL` and `EXPO_PUBLIC_TMDB_API_KEY` and talk to TMDB directly. Rebuild the hosted files with `npm run export:web` before shipping a web change. `npm run export:web` refuses to keep an export that contains the key from `.env`.
+
+Then open `https://<your-service>.onrender.com/health` and expect `{"ok":true}`. The privacy policy is at `https://<your-service>.onrender.com/privacy`, and the app is at `https://<your-service>.onrender.com/app`. A phone build still needs `EXPO_PUBLIC_GROUP_API_URL` set to that origin.
 
 Fly.io:
 

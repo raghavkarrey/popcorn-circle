@@ -5,6 +5,7 @@ COPY lib/groups.ts ./lib/groups.ts
 COPY lib/support.ts ./lib/support.ts
 COPY privacy.md ./privacy.md
 COPY assets/images/tmdb-logo.svg ./assets/images/tmdb-logo.svg
+COPY web ./web
 ENV HOST=0.0.0.0
 ENV GROUP_FILE=/data/circles.json
 EXPOSE 43124

@@ -18,3 +18,5 @@ services:
         value: "*"
       - key: ADMIN_TOKEN
         generateValue: true
+      - key: TMDB_API_KEY
+        sync: false

@@ -7,10 +7,12 @@ export class GroupApiError extends Error {
   }
 }
 
-const API_KEY = 'EXPO_PUBLIC_GROUP_API_URL';
-
-export function groupApiBase(env: Record<string, string | undefined> = process.env): string {
-  const value = env[API_KEY];
+export function groupApiBase(env?: Record<string, string | undefined>): string {
+  // Direct property reads so Expo can inline the public values for a native build.
+  // The hosted website sets EXPO_PUBLIC_GROUP_API_SAME_ORIGIN and calls this origin.
+  const sameOrigin = env === undefined ? process.env.EXPO_PUBLIC_GROUP_API_SAME_ORIGIN : env.EXPO_PUBLIC_GROUP_API_SAME_ORIGIN;
+  if (sameOrigin === '1') return '';
+  const value = env === undefined ? process.env.EXPO_PUBLIC_GROUP_API_URL : env.EXPO_PUBLIC_GROUP_API_URL;
   const trimmed = typeof value === 'string' ? value.trim().replace(/\/$/, '') : '';
   return trimmed || 'http://127.0.0.1:43124';
 }
@@ -25,7 +27,8 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new GroupApiError(`Couldn't reach the group server at ${base}. Start it with npm run circle.`);
+    const where = base || 'this site';
+    throw new GroupApiError(`Couldn't reach the group server at ${where}. Start it with npm run circle.`);
   }
 
   const payload = (await response.json().catch(() => null)) as { error?: string } | null;

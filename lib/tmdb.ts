@@ -19,6 +19,11 @@ type TmdbMovie = {
 
 export type TmdbSuggestion = Movie & { voteAverage: number };
 
+export function usesTmdbProxy(env?: Record<string, string | undefined>): boolean {
+  const value = env === undefined ? process.env.EXPO_PUBLIC_TMDB_PROXY : env.EXPO_PUBLIC_TMDB_PROXY;
+  return value === '1';
+}
+
 export function readTmdbApiKey(env?: Record<string, string | undefined>): string | null {
   // A direct property read is required so Expo can inline EXPO_PUBLIC_TMDB_API_KEY.
   // Callers that pass an object, including tests, keep the dynamic lookup.
@@ -93,8 +98,11 @@ export async function searchTmdb(
   query: string,
   key: string,
   fetchImpl: typeof fetch = fetch,
+  mode: { proxy?: boolean } = {},
 ): Promise<Movie[]> {
-  const request = tmdbRequest(key, query);
+  const request = mode.proxy
+    ? { url: `/api/tmdb/search?query=${encodeURIComponent(query)}`, headers: { Accept: 'application/json' } }
+    : tmdbRequest(key, query);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
 
@@ -126,8 +134,11 @@ async function fetchTmdbPage(
   path: string,
   key: string,
   fetchImpl: typeof fetch,
+  proxy = false,
 ): Promise<TmdbSuggestion[]> {
-  const request = tmdbPathRequest(key, path);
+  const request = proxy
+    ? { url: `/api/tmdb${path}`, headers: { Accept: 'application/json' } }
+    : tmdbPathRequest(key, path);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
@@ -151,13 +162,14 @@ export async function fetchTmdbRelated(
   tmdbId: number,
   key: string,
   fetchImpl: typeof fetch = fetch,
+  mode: { proxy?: boolean } = {},
 ): Promise<TmdbSuggestion[]> {
   let recommendations: TmdbSuggestion[] = [];
   try {
-    recommendations = await fetchTmdbPage(`/movie/${tmdbId}/recommendations`, key, fetchImpl);
+    recommendations = await fetchTmdbPage(`/movie/${tmdbId}/recommendations`, key, fetchImpl, mode.proxy);
   } catch {
     recommendations = [];
   }
   if (recommendations.length > 0) return recommendations;
-  return fetchTmdbPage(`/movie/${tmdbId}/similar`, key, fetchImpl);
+  return fetchTmdbPage(`/movie/${tmdbId}/similar`, key, fetchImpl, mode.proxy);
 }

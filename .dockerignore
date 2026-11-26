@@ -2,5 +2,7 @@ node_modules
 .expo
 server/data
 .git
+.env
+.env.*
 *.md
 !privacy.md

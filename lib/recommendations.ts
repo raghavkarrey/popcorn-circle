@@ -173,10 +173,11 @@ async function resolveTmdbId(
   seed: RecommendationSeed,
   key: string,
   fetchImpl: typeof fetch,
+  inputProxy = false,
 ): Promise<number | null> {
   const direct = tmdbNumericId(seed.movieId);
   if (direct) return direct;
-  const matches = await searchTmdb(seed.title, key, fetchImpl);
+  const matches = await searchTmdb(seed.title, key, fetchImpl, { proxy: inputProxy });
   const exact = matches.find((movie) => normalizeTitle(movie.title) === normalizeTitle(seed.title) && movie.year === seed.year);
   const titled = matches.find((movie) => normalizeTitle(movie.title) === normalizeTitle(seed.title));
   return tmdbNumericId((exact ?? titled)?.id ?? '');
@@ -185,23 +186,25 @@ async function resolveTmdbId(
 export async function loadPersonalRecommendations(input: {
   ratings: RecommendationSeed[];
   key: string | null;
+  proxy?: boolean;
   fetchImpl?: typeof fetch;
   shelf?: Movie[];
 }): Promise<PersonalRecommendations> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const shelf = input.shelf ?? SAMPLE_MOVIES;
+  const proxy = input.proxy === true;
   const seeds = recommendationSeeds(input.ratings);
   const shelfPicks = () => rankShelf(seeds, input.ratings, shelf).slice(0, 20);
   if (seeds.length === 0) return { picks: [], source: 'none', notice: null };
-  if (!input.key) return { picks: shelfPicks(), source: 'shelf', notice: null };
+  if (!input.key && !proxy) return { picks: shelfPicks(), source: 'shelf', notice: null };
 
   const incoming: IncomingSuggestion[] = [];
   let reached = false;
   for (const seed of seeds) {
     try {
-      const tmdbId = await resolveTmdbId(seed, input.key, fetchImpl);
+      const tmdbId = await resolveTmdbId(seed, input.key ?? '', fetchImpl, proxy);
       if (!tmdbId) continue;
-      const related: TmdbSuggestion[] = await fetchTmdbRelated(tmdbId, input.key, fetchImpl);
+      const related: TmdbSuggestion[] = await fetchTmdbRelated(tmdbId, input.key ?? '', fetchImpl, { proxy });
       reached = true;
       for (const movie of related) {
         incoming.push({ movie, voteAverage: movie.voteAverage, seedKey: seed.movieId });

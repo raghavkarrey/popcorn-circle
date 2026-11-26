@@ -59,6 +59,20 @@ export function landingHtml(logoSvg: string): string {
     }
     a { color: #e4a853; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    .cta { margin: 28px 0 0; }
+    a.open {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: #e4a853;
+      color: #1a1408;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    a.open:hover { text-decoration: none; background: #efc27a; }
     .tmdb {
       margin-top: 72px;
       padding-top: 20px;
@@ -80,6 +94,7 @@ export function landingHtml(logoSvg: string): string {
     <p class="mark">Popcorn Circle</p>
     <h1>Rate what you watched.</h1>
     <p class="lead">Rate movies, and share ratings and notes with a small circle of friends. No account. A short code is enough.</p>
+    <p class="cta"><a class="open" href="/app">Open the app</a></p>
     <div class="links">
       <a href="/privacy">Privacy policy</a>
       <a href="mailto:${email}">${email}</a>

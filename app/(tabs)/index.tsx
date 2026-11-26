@@ -17,13 +17,13 @@ import { useRatings } from '@/context/RatingsProvider';
 import { rememberMovie, rememberMovies } from '@/lib/movie-memory';
 import { previewShelf, searchMovies } from '@/lib/movies';
 import { findRatingForMovie } from '@/lib/ratings';
-import { readTmdbApiKey } from '@/lib/tmdb';
+import { readTmdbApiKey, usesTmdbProxy } from '@/lib/tmdb';
 import type { Movie, SearchResult } from '@/lib/types';
 
 export default function SearchScreen() {
   const fontsReady = useFontsReady();
   const { ratings } = useRatings();
-  const hasKey = Boolean(readTmdbApiKey());
+  const hasKey = Boolean(readTmdbApiKey()) || usesTmdbProxy();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,9 @@ export default function SearchScreen() {
   useEffect(() => {
     const trimmed = query.trim();
     const key = readTmdbApiKey();
+    const proxy = usesTmdbProxy();
 
-    if (!trimmed || !key) {
+    if (!trimmed || (!key && !proxy)) {
       setLoading(false);
       setState(previewShelf(query));
       return;
@@ -42,7 +43,7 @@ export default function SearchScreen() {
     let cancelled = false;
     setLoading(true);
     const timer = setTimeout(() => {
-      void searchMovies(trimmed, { key }).then((result) => {
+      void searchMovies(trimmed, { key, proxy }).then((result) => {
         if (cancelled) return;
         setState(result);
         setLoading(false);
