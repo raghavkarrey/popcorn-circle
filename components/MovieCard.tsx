@@ -9,10 +9,11 @@ import type { Movie, Rating } from '@/lib/types';
 type Props = {
   movie: Movie;
   rating?: Rating;
+  detail?: string;
   onPress: () => void;
 };
 
-export function MovieCard({ movie, rating, onPress }: Props) {
+export function MovieCard({ movie, rating, detail, onPress }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -36,6 +37,11 @@ export function MovieCard({ movie, rating, onPress }: Props) {
           ) : null}
         </View>
         <AppText variant="meta">{movie.year}</AppText>
+        {detail ? (
+          <AppText variant="meta" style={styles.detail}>
+            {detail}
+          </AppText>
+        ) : null}
         <AppText variant="muted" numberOfLines={2} style={styles.overview}>
           {movie.overview}
         </AppText>
@@ -76,6 +82,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   pillText: {
+    color: colors.amber,
+  },
+  detail: {
+    marginTop: 4,
     color: colors.amber,
   },
   overview: {

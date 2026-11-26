@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
 import { useFontsReady } from '@/components/AppText';
-import { PeopleIcon, SearchIcon, StarIcon } from '@/components/Icons';
+import { PeopleIcon, SearchIcon, SparkIcon, StarIcon } from '@/components/Icons';
 import { colors, fonts } from '@/constants/theme';
 import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
@@ -40,6 +40,13 @@ export default function TabLayout() {
           title: 'Search',
           tabBarHideOnKeyboard: true,
           tabBarIcon: ({ color, size }) => <SearchIcon color={tint(color)} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="for-you"
+        options={{
+          title: 'For you',
+          tabBarIcon: ({ color, size }) => <SparkIcon color={tint(color)} size={size} />,
         }}
       />
       <Tabs.Screen

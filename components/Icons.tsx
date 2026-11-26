@@ -33,6 +33,15 @@ export function ChevronLeftIcon({ color, size = 22 }: IconProps) {
   );
 }
 
+export function SparkIcon({ color, size = 22 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3.2l1.15 4.05L17.4 8.4l-4.25 1.15L12 13.6l-1.15-4.05L6.6 8.4l4.25-1.15L12 3.2z" fill={color} />
+      <Path d="M18.2 14.2l.55 1.9 1.95.55-1.95.55-.55 1.9-.55-1.9-1.95-.55 1.95-.55.55-1.9z" fill={color} />
+    </Svg>
+  );
+}
+
 export function PeopleIcon({ color, size = 22 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

@@ -178,6 +178,7 @@ This product uses the TMDB API but is not endorsed or certified by TMDB. Poster 
 - Open **My Ratings**, sort by most recent or highest rated, then edit or delete.
 - Ratings persist in AsyncStorage on that device. The storage key is still `aftercredits.ratings.v1`, so a log saved under the old name is still there.
 - Open **Group** to start or join with a code, then see friends’ stars and notes. The personal log still works with no group.
+- Open **For you** for suggestions based on movies you rated 4 stars or higher. **Circle picks** lists films your group rated highly that you have not rated yet. Blocked members are left out.
 
 ## Tests
 
