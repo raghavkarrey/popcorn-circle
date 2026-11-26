@@ -3,6 +3,7 @@ import type { ColorValue } from 'react-native';
 
 import { useFontsReady } from '@/components/AppText';
 import { PeopleIcon, SearchIcon, SparkIcon, StarIcon } from '@/components/Icons';
+import { useScreenMode } from '@/components/useScreenMode';
 import { colors, fonts } from '@/constants/theme';
 import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
@@ -13,8 +14,10 @@ function tint(color: ColorValue): string {
 
 export default function TabLayout() {
   const fontsReady = useFontsReady();
+  const mode = useScreenMode();
   const { ratings } = useRatings();
   const { group } = useGroup();
+  const sidebar = mode === 'desktop';
 
   return (
     <Tabs
@@ -22,10 +25,12 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.amber,
         tabBarInactiveTintColor: colors.textFaint,
-        tabBarStyle: {
-          backgroundColor: '#101014',
-          borderTopColor: colors.line,
-        },
+        tabBarStyle: sidebar
+          ? { display: 'none' }
+          : {
+              backgroundColor: '#101014',
+              borderTopColor: colors.line,
+            },
         tabBarLabelStyle: {
           fontFamily: fontsReady ? fonts.medium : undefined,
           fontSize: 11,

@@ -15,7 +15,9 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Poster } from '@/components/Poster';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Stars } from '@/components/Stars';
+import { useCardColumns, useScreenMode } from '@/components/useScreenMode';
 import { colors, fonts } from '@/constants/theme';
+import { formMaxWidth, pageTitleSize } from '@/lib/layout';
 import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
 import { GROUP_CODE_LENGTH, groupFeed, languageError, normalizeGroupCode, type GroupFeedItem } from '@/lib/groups';
@@ -24,6 +26,8 @@ import { formatRatedOn, formatStars } from '@/lib/ratings';
 
 export default function GroupScreen() {
   const fontsReady = useFontsReady();
+  const mode = useScreenMode();
+  const columns = useCardColumns();
   const {
     ready,
     displayName,
@@ -129,9 +133,9 @@ export default function GroupScreen() {
   if (!membership || !group) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']} testID="screen-group">
-        <View style={styles.form}>
+        <View style={[styles.form, formMaxWidth(mode) ? { maxWidth: formMaxWidth(mode) } : null]}>
           <AppText variant="eyebrow">Together</AppText>
-          <AppText variant="display" style={styles.title}>
+          <AppText variant="display" style={[styles.title, pageTitleSize(mode)]}>
             Watch with friends
           </AppText>
           <AppText variant="muted" style={styles.subtitle}>
@@ -212,6 +216,9 @@ export default function GroupScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']} testID="screen-group">
       <FlatList
+        key={columns}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? styles.row : undefined}
         data={feed}
         keyExtractor={(item) => `${item.memberId}-${item.movieId}`}
         contentContainerStyle={[styles.list, { paddingBottom: 48 }]}
@@ -277,7 +284,7 @@ export default function GroupScreen() {
         renderItem={({ item }) => {
           const mine = item.memberId === membership.memberId;
           return (
-            <View style={styles.card} testID={`group-rating-${item.memberId}-${item.movieId}`}>
+            <View style={[styles.card, columns > 1 && styles.cardWide]} testID={`group-rating-${item.memberId}-${item.movieId}`}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${item.memberName} rated ${item.title} ${formatStars(item.stars)}`}
@@ -506,6 +513,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  row: { gap: 12 },
+  cardWide: { flex: 1 },
   card: {
     marginBottom: 10,
     borderRadius: 16,

@@ -12,7 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText, useFontsReady } from '@/components/AppText';
 import { MovieCard } from '@/components/MovieCard';
+import { PosterTile } from '@/components/PosterTile';
+import { usePosterColumns, useScreenMode } from '@/components/useScreenMode';
 import { colors, fonts } from '@/constants/theme';
+import { pageTitleSize } from '@/lib/layout';
 import { useRatings } from '@/context/RatingsProvider';
 import { rememberMovie, rememberMovies } from '@/lib/movie-memory';
 import { previewShelf, searchMovies } from '@/lib/movies';
@@ -22,6 +25,8 @@ import type { Movie, SearchResult } from '@/lib/types';
 
 export default function SearchScreen() {
   const fontsReady = useFontsReady();
+  const mode = useScreenMode();
+  const columns = usePosterColumns();
   const { ratings } = useRatings();
   const hasKey = Boolean(readTmdbApiKey()) || usesTmdbProxy();
   const [query, setQuery] = useState('');
@@ -66,11 +71,12 @@ export default function SearchScreen() {
   }
 
   const sectionTitle = loading ? 'Searching' : query.trim() ? 'Results' : 'On the shelf';
+  const grid = columns > 1 && !loading;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']} testID="screen-search">
       <FlatList
-        data={loading ? [] : state.movies}
+        data={grid || loading ? [] : state.movies}
         extraData={ratings}
         keyExtractor={(movie) => movie.id}
         keyboardShouldPersistTaps="handled"
@@ -84,7 +90,7 @@ export default function SearchScreen() {
                 <AppText variant="meta" style={styles.about}>About</AppText>
               </Pressable>
             </View>
-            <AppText variant="display" style={styles.title}>
+            <AppText variant="display" style={[styles.title, pageTitleSize(mode)]}>
               What did you watch?
             </AppText>
             <AppText variant="muted" style={styles.subtitle}>
@@ -101,6 +107,7 @@ export default function SearchScreen() {
                 placeholderTextColor={colors.textFaint}
                 accessibilityLabel="Search movies by title"
                 testID="search-input"
+                autoFocus={mode === 'desktop'}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="search"
@@ -132,10 +139,19 @@ export default function SearchScreen() {
                 <AppText variant="meta">{state.movies.length}</AppText>
               )}
             </View>
+            {grid ? (
+              <View style={styles.grid}>
+                {state.movies.map((movie) => (
+                  <View key={movie.id} style={{ width: `${100 / columns}%`, padding: 8 }}>
+                    <PosterTile movie={movie} onPress={() => openMovie(movie)} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         }
         ListEmptyComponent={
-          loading ? undefined : (
+          grid || loading ? undefined : (
             <View style={styles.empty}>
               <AppText variant="title">No matches</AppText>
               <AppText variant="muted" style={styles.emptyBody}>
@@ -231,6 +247,11 @@ const styles = StyleSheet.create({
   },
   item: {
     marginBottom: 10,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
   },
   empty: {
     paddingVertical: 12,

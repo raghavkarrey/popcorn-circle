@@ -24,9 +24,39 @@ export function landingHtml(logoSvg: string): string {
       font-family: Georgia, "Iowan Old Style", Palatino, serif;
     }
     main {
-      max-width: 440px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 64px 24px 48px;
+      padding: 40px 28px 64px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.7fr);
+      gap: 48px;
+      align-items: end;
+      margin-top: 72px;
+    }
+    .panel {
+      border: 1px solid rgba(244, 241, 234, 0.08);
+      border-radius: 20px;
+      padding: 22px;
+      background: #101014;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+    .panel p { margin: 0 0 14px; color: #a39e93; font-size: 15px; line-height: 1.45; }
+    .panel strong { color: #f4f1ea; font-weight: 600; }
+    @media (max-width: 899px) {
+      .hero { grid-template-columns: 1fr; gap: 28px; margin-top: 36px; }
+      .panel { display: none; }
+    }
+    @media (max-width: 699px) {
+      main { max-width: 440px; padding: 64px 24px 48px; }
+      h1 { font-size: 56px; }
     }
     .mark {
       margin: 0;
@@ -38,10 +68,10 @@ export function landingHtml(logoSvg: string): string {
     }
     h1 {
       margin: 10px 0 0;
-      font-size: 56px;
-      line-height: 0.95;
+      font-size: 84px;
+      line-height: 0.92;
       font-weight: 600;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.04em;
     }
     .lead {
       margin: 18px 0 0;
@@ -91,14 +121,25 @@ export function landingHtml(logoSvg: string): string {
 </head>
 <body>
   <main>
-    <p class="mark">Popcorn Circle</p>
-    <h1>Rate what you watched.</h1>
-    <p class="lead">Rate movies, and share ratings and notes with a small circle of friends. No account. A short code is enough.</p>
-    <p class="cta"><a class="open" href="/app">Open the app</a></p>
-    <div class="links">
-      <a href="/privacy">Privacy policy</a>
-      <a href="mailto:${email}">${email}</a>
-    </div>
+    <header>
+      <p class="mark">Popcorn Circle</p>
+      <div class="links">
+        <a href="/privacy">Privacy</a>
+        <a href="mailto:${email}">${email}</a>
+      </div>
+    </header>
+    <section class="hero">
+      <div>
+        <h1>Rate what you watched.</h1>
+        <p class="lead">Rate movies, and share ratings and notes with a small circle of friends. No account. A short code is enough.</p>
+        <p class="cta"><a class="open" href="/app">Open the app</a></p>
+      </div>
+      <aside class="panel">
+        <p><strong>Search.</strong> Find a film and keep the rating on this device.</p>
+        <p><strong>For you.</strong> Suggestions from what you rated 4 stars or higher.</p>
+        <p><strong>Group.</strong> Share stars and notes with a short code.</p>
+      </aside>
+    </section>
     <div class="tmdb">
       ${logoSvg}
       <p class="notice">${TMDB_NOTICE}</p>

@@ -5,7 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/AppText';
 import { MovieCard } from '@/components/MovieCard';
+import { PosterTile } from '@/components/PosterTile';
+import { usePosterColumns, useScreenMode } from '@/components/useScreenMode';
 import { colors } from '@/constants/theme';
+import { pageTitleSize } from '@/lib/layout';
 import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
 import { rememberMovie, rememberMovies } from '@/lib/movie-memory';
@@ -23,6 +26,8 @@ import { readTmdbApiKey, usesTmdbProxy } from '@/lib/tmdb';
 import type { Movie } from '@/lib/types';
 
 export default function ForYouScreen() {
+  const mode = useScreenMode();
+  const columns = usePosterColumns();
   const { ratings, ready } = useRatings();
   const { group, membership, blockedMemberIds } = useGroup();
   const [personal, setPersonal] = useState<PersonalRecommendations>({ picks: [], source: 'none', notice: null });
@@ -98,7 +103,7 @@ export default function ForYouScreen() {
             <AppText variant="meta" style={styles.about}>About</AppText>
           </Pressable>
         </View>
-        <AppText variant="display" style={styles.title}>For you</AppText>
+        <AppText variant="display" style={[styles.title, pageTitleSize(mode)]}>For you</AppText>
         <AppText variant="muted" style={styles.subtitle}>
           Films that sit near the ones you already loved, plus what your circle rated highly.
         </AppText>
@@ -115,17 +120,23 @@ export default function ForYouScreen() {
         {ready && !loading && forYouMessage ? (
           <AppText variant="muted" testID="for-you-empty">{forYouMessage}</AppText>
         ) : null}
-        {ready && !loading
-          ? personal.picks.map((pick) => (
-            <View key={pick.movie.id} style={styles.item} testID={`for-you-${pick.movie.id}`}>
-              <MovieCard
-                movie={pick.movie}
-                detail={suggestionReason(pick.seedCount)}
-                onPress={() => openMovie(pick.movie)}
-              />
-            </View>
-          ))
-          : null}
+        {ready && !loading ? (
+          <View style={columns > 1 ? styles.grid : undefined}>
+            {personal.picks.map((pick) => (
+              <View
+                key={pick.movie.id}
+                style={columns > 1 ? [styles.cell, { width: `${100 / columns}%` }] : styles.item}
+                testID={`for-you-${pick.movie.id}`}
+              >
+                {columns > 1 ? (
+                  <PosterTile movie={pick.movie} detail={suggestionReason(pick.seedCount)} onPress={() => openMovie(pick.movie)} />
+                ) : (
+                  <MovieCard movie={pick.movie} detail={suggestionReason(pick.seedCount)} onPress={() => openMovie(pick.movie)} />
+                )}
+              </View>
+            ))}
+          </View>
+        ) : null}
         {!loading && personal.picks.length > 0 ? (
           <AppText variant="meta" style={styles.footer}>
             {personal.source === 'tmdb'
@@ -141,15 +152,21 @@ export default function ForYouScreen() {
         {circleMessage ? (
           <AppText variant="muted" testID="circle-picks-note">{circleMessage}</AppText>
         ) : (
-          picks.map((pick) => (
-            <View key={pick.movie.id} style={styles.item} testID={`circle-pick-${pick.movie.id}`}>
-              <MovieCard
-                movie={pick.movie}
-                detail={circlePickDetail(pick)}
-                onPress={() => openMovie(pick.movie)}
-              />
-            </View>
-          ))
+          <View style={columns > 1 ? styles.grid : undefined}>
+            {picks.map((pick) => (
+              <View
+                key={pick.movie.id}
+                style={columns > 1 ? [styles.cell, { width: `${100 / columns}%` }] : styles.item}
+                testID={`circle-pick-${pick.movie.id}`}
+              >
+                {columns > 1 ? (
+                  <PosterTile movie={pick.movie} detail={circlePickDetail(pick)} onPress={() => openMovie(pick.movie)} />
+                ) : (
+                  <MovieCard movie={pick.movie} detail={circlePickDetail(pick)} onPress={() => openMovie(pick.movie)} />
+                )}
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -177,5 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amberSoft,
   },
   item: { marginBottom: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8 },
+  cell: { padding: 8 },
   footer: { marginTop: 4 },
 });

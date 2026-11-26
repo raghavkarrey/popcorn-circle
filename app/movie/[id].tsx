@@ -14,19 +14,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText, useFontsReady } from '@/components/AppText';
 import { ChevronLeftIcon } from '@/components/Icons';
 import { Poster } from '@/components/Poster';
+import { PosterTile } from '@/components/PosterTile';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { StarPicker, Stars } from '@/components/Stars';
+import { useScreenMode } from '@/components/useScreenMode';
 import { colors, fonts } from '@/constants/theme';
 import { useGroup } from '@/context/GroupProvider';
 import { useRatings } from '@/context/RatingsProvider';
 import { ratingsForMovie } from '@/lib/groups';
+import { pageTitleSize } from '@/lib/layout';
+import { rememberMovie } from '@/lib/movie-memory';
 import { resolveMovie } from '@/lib/movies';
 import { findRatingForMovie, formatStars, MAX_NOTE_LENGTH } from '@/lib/ratings';
-import { largerPoster } from '@/lib/tmdb';
+import { fetchTmdbRelated, largerPoster, readTmdbApiKey, tmdbNumericId, usesTmdbProxy } from '@/lib/tmdb';
+import type { Movie } from '@/lib/types';
 
 export default function MovieScreen() {
   const fontsReady = useFontsReady();
+  const mode = useScreenMode();
+  const desktop = mode === 'desktop';
+  const [related, setRelated] = useState<Movie[]>([]);
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? '';
   const { ratings, ready, rate, remove } = useRatings();
@@ -42,6 +50,31 @@ export default function MovieScreen() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!desktop || !movie) {
+      setRelated([]);
+      return;
+    }
+    const numericId = tmdbNumericId(movie.id);
+    const key = readTmdbApiKey();
+    const proxy = usesTmdbProxy();
+    if (!numericId || (!key && !proxy)) {
+      setRelated([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchTmdbRelated(numericId, key ?? '', fetch, { proxy })
+      .then((movies) => {
+        if (!cancelled) setRelated(movies.slice(0, 8));
+      })
+      .catch(() => {
+        if (!cancelled) setRelated([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [desktop, movie]);
 
   useEffect(() => {
     if (!ready || hydrated) return;
@@ -128,11 +161,18 @@ export default function MovieScreen() {
           ) : null}
 
           {movie ? (
-            <>
-              <View style={styles.posterWrap}>
-                <Poster uri={largerPoster(movie.posterUrl)} title={movie.title} width={180} height={270} radius={16} />
+            <View style={desktop ? styles.split : undefined}>
+              <View style={desktop ? styles.posterCol : styles.posterWrap}>
+                <Poster
+                  uri={largerPoster(movie.posterUrl)}
+                  title={movie.title}
+                  width={desktop ? 300 : 180}
+                  height={desktop ? 450 : 270}
+                  radius={16}
+                />
               </View>
-              <AppText variant="display" style={styles.movieTitle}>
+              <View style={desktop ? styles.infoCol : undefined}>
+              <AppText variant="display" style={[styles.movieTitle, pageTitleSize(mode)]}>
                 {movie.title}
               </AppText>
               <AppText variant="meta" style={styles.year}>
@@ -215,6 +255,26 @@ export default function MovieScreen() {
                 </Pressable>
               ) : null}
 
+              {desktop && related.length > 0 ? (
+                <>
+                  <AppText variant="eyebrow" style={styles.section}>More like this</AppText>
+                  <View style={styles.related}>
+                    {related.map((item) => (
+                      <View key={item.id} style={styles.relatedItem}>
+                        <PosterTile
+                          movie={item}
+                          onPress={() => {
+                            rememberMovie(item);
+                            router.push({ pathname: '/movie/[id]', params: { id: item.id } });
+                          }}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <AppText variant="meta">Suggestions from TMDB. This app is not endorsed or certified by TMDB.</AppText>
+                </>
+              ) : null}
+
               <AppText variant="eyebrow" style={styles.section}>
                 In the group
               </AppText>
@@ -247,7 +307,8 @@ export default function MovieScreen() {
                   })}
                 </View>
               )}
-            </>
+              </View>
+            </View>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -292,6 +353,30 @@ const styles = StyleSheet.create({
   posterWrap: {
     alignItems: 'center',
     marginTop: 8,
+  },
+  split: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 36,
+    marginTop: 8,
+    width: '100%',
+  },
+  posterCol: {
+    width: 300,
+  },
+  infoCol: {
+    flex: 1,
+    minWidth: 320,
+    maxWidth: 720,
+  },
+  related: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  relatedItem: {
+    width: '25%',
+    padding: 8,
   },
   movieTitle: {
     marginTop: 18,

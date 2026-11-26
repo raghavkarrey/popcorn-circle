@@ -29,4 +29,11 @@ html, body, #root {
 }
 body {
   margin: 0;
+}
+a, button, input, textarea, [role="button"], [role="link"] {
+  cursor: pointer;
+}
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [role="link"]:focus-visible {
+  outline: 2px solid #e4a853;
+  outline-offset: 3px;
 }`;

@@ -7,7 +7,9 @@ import { AppText } from '@/components/AppText';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { RatingCard } from '@/components/RatingCard';
+import { useCardColumns, useScreenMode } from '@/components/useScreenMode';
 import { colors } from '@/constants/theme';
+import { pageTitleSize } from '@/lib/layout';
 import { useRatings } from '@/context/RatingsProvider';
 import { rememberMovie } from '@/lib/movie-memory';
 import { formatSummary, movieFromRating, sortRatings } from '@/lib/ratings';
@@ -19,6 +21,8 @@ const SORTS: { id: SortMode; label: string }[] = [
 ];
 
 export default function RatingsScreen() {
+  const screen = useScreenMode();
+  const columns = useCardColumns();
   const { ratings, ready, error, remove, refresh } = useRatings();
   const [mode, setMode] = useState<SortMode>('recent');
   const [pending, setPending] = useState<Rating | null>(null);
@@ -32,13 +36,16 @@ export default function RatingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']} testID="screen-ratings">
       <FlatList
+        key={columns}
         data={ready ? sorted : []}
+        numColumns={columns}
         keyExtractor={(rating) => rating.movieId}
+        columnWrapperStyle={columns > 1 ? styles.row : undefined}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
             <AppText variant="eyebrow">On this device</AppText>
-            <AppText variant="display" style={styles.title}>
+            <AppText variant="display" style={[styles.title, pageTitleSize(screen)]}>
               My ratings
             </AppText>
             <AppText variant="muted" style={styles.summary}>
@@ -91,7 +98,7 @@ export default function RatingsScreen() {
           )
         }
         renderItem={({ item }) => (
-          <View style={styles.item}>
+          <View style={[styles.item, columns > 1 && styles.itemWide]}>
             <RatingCard rating={item} onPress={() => openRating(item)} onDelete={() => setPending(item)} />
           </View>
         )}
@@ -153,8 +160,14 @@ const styles = StyleSheet.create({
   chipLabelOn: {
     color: colors.amber,
   },
+  row: {
+    gap: 12,
+  },
   item: {
     marginBottom: 10,
+  },
+  itemWide: {
+    flex: 1,
   },
   spinner: {
     marginTop: 24,
